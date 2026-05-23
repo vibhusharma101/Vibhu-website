@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { BadgeCard } from "../ui/BadgeCard";
 
 export function MyProjects() {
-  const [projectCards, setProjectCards] = useState<any[]>(["/", "/"]);
+  const [projectCards, setProjectCards] = useState<string[]>(["/", "/"]);
 
   useEffect(() => {
     fetchData();
