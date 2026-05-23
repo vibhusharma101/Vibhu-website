@@ -1,31 +1,44 @@
-'use client'
-import { Container, Stack, Timeline, Title,Text } from "@mantine/core";
-import { IconGitBranch, IconGitCommit, IconGitPullRequest, IconMessageDots } from "@tabler/icons-react";
+import { workex } from '@/data/workex';
+import classes from './WorkEx.module.css';
 
+export default function WorkEx() {
+  return (
+    <section className={classes.section}>
+      <div className={classes.inner}>
+        <h2 className={classes.heading}>Work Experience</h2>
 
-export default function WorkEx(){
-    return <Stack  w={"100%"} align="center" >
-        <Title>Work Experience</Title>
-            <Timeline active={1} bulletSize={40} lineWidth={2}> 
-      <Timeline.Item bullet={<IconGitBranch size={12} />} title="New branch">
-        <Text c="dimmed" size="sm">You&apos;ve created new branch <Text variant="link" component="span" inherit>fix-notifications</Text> from master</Text>
-        <Text size="xs" mt={4}>2 hours ago</Text>
-      </Timeline.Item>
+        <div className={classes.timeline}>
+          {workex.map((entry, i) => (
+            <div key={entry.id} className={classes.item}>
+              <div className={classes.marker}>
+                <div className={`${classes.dot} ${entry.current ? classes.dotActive : ''}`} />
+                {i < workex.length - 1 && <div className={classes.line} />}
+              </div>
 
-      <Timeline.Item bullet={<IconGitCommit size={12} />} title="Commits">
-        <Text c="dimmed" size="sm">You&apos;ve pushed 23 commits to<Text variant="link" component="span" inherit>fix-notifications branch</Text></Text>
-        <Text size="xs" mt={4}>52 minutes ago</Text>
-      </Timeline.Item>
+              <div className={classes.content}>
+                <div className={classes.meta}>
+                  <span className={classes.period}>{entry.period}</span>
+                  {entry.current && <span className={classes.badge}>Current</span>}
+                </div>
+                <h3 className={classes.role}>{entry.role}</h3>
+                <span className={classes.company}>{entry.company} · {entry.location}</span>
 
-      <Timeline.Item title="Pull request" bullet={<IconGitPullRequest size={12} />} lineVariant="dashed">
-        <Text c="dimmed" size="sm">You&apos;ve submitted a pull request<Text variant="link" component="span" inherit>Fix incorrect notification message (#187)</Text></Text>
-        <Text size="xs" mt={4}>34 minutes ago</Text>
-      </Timeline.Item>
+                <ul className={classes.bullets}>
+                  {entry.bullets.map((b, j) => (
+                    <li key={j}>{b}</li>
+                  ))}
+                </ul>
 
-      <Timeline.Item title="Code review" bullet={<IconMessageDots size={12} />}>
-        <Text c="dimmed" size="sm"><Text variant="link" component="span" inherit>Robert Gluesticker</Text> left a code review on your pull request</Text>
-        <Text size="xs" mt={4}>12 minutes ago</Text>
-      </Timeline.Item>
-    </Timeline>
-    </Stack>
+                <div className={classes.skills}>
+                  {entry.skills.map((s) => (
+                    <span key={s} className={classes.skill}>{s}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

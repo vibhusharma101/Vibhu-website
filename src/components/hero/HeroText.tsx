@@ -1,40 +1,35 @@
-import { Button, Container, Text, Title } from '@mantine/core';
+import Link from 'next/link';
 import classes from './HeroText.module.css';
 import { Dots } from './Dots';
 
 export function HeroText() {
   return (
-    <Container fluid className={classes.wrapper} w={"100%"}>
-      <Dots className={classes.dots} style={{ left: 0, top: 0 }} />
-      <Dots className={classes.dots} style={{ right: 0, top: 0 }} />
-      <Dots className={classes.dots} style={{ left: 0, top: 140 }} />
-      <Dots className={classes.dots} style={{ right: 0, top: 60 }} />
+    <section className={classes.wrapper}>
+      <Dots className={classes.dotsLeft} />
+      <Dots className={classes.dotsRight} />
 
       <div className={classes.inner}>
-        <Title className={classes.title}>
-          Automated AI{' '}
-          <Text component="span" className={classes.highlight} inherit>
-            code reviews
-          </Text>{' '}
-          for any stack
-        </Title>
+        <h1 className={classes.title}>
+          Tech Generalist.{' '}
+          <span className={classes.highlight}>2x Founder.</span>{' '}
+          Builder.
+        </h1>
 
-        <Container p={0} size={600}>
-          <Text size="lg" c="dimmed" className={classes.description}>
-            Build more reliable software with AI companion. AI is also trained to detect lazy
-            developers who do nothing and just complain on Twitter.
-          </Text>
-        </Container>
+        <p className={classes.description}>
+          IIT Roorkee Gold Medalist. Founding engineer at Powerplay (500k+ users).
+          Solo founder of Vignam ($1M valuation). Currently leading AI engineering
+          at Powerplay — building India&apos;s first AI Workforce for Construction.
+        </p>
 
         <div className={classes.controls}>
-          <Button className={classes.control} size="lg" variant="default" color="gray">
-            Book a demo
-          </Button>
-          <Button className={classes.control} size="lg">
-            Purchase a license
-          </Button>
+          <a href="https://www.linkedin.com/in/vibhanshu-sharma-b089b2164/" target="_blank" rel="noopener noreferrer" className={classes.btnPrimary}>
+            Connect on LinkedIn
+          </a>
+          <Link href="/project" className={classes.btnSecondary}>
+            View Projects
+          </Link>
         </div>
       </div>
-    </Container>
+    </section>
   );
 }
