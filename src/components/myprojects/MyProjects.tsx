@@ -1,28 +1,18 @@
-"use client";
-import { Grid, Stack, Title } from "@mantine/core";
-import { BadgeCard } from "../ui/BadgeCard";
-import { projects } from "@/data/projects";
-import { useEffect, useState } from "react";
+import { BadgeCard } from '@/components/ui/BadgeCard';
+import { projects } from '@/data/projects';
+import classes from './MyProjects.module.css';
 
 export function MyProjects() {
-  const [projectCards, setProjectCards] = useState<string[]>(["/", "/"]);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  function fetchData() {}
-
   return (
-    <Stack align="center" gap={46}>
-      <Title>My Projects</Title>
-      <Grid>
-        {projects.map((project) => (
-          <Grid.Col key={project.id}>
-            <BadgeCard />
-          </Grid.Col>
-        ))}
-      </Grid>
-    </Stack>
+    <section className={classes.section}>
+      <div className={classes.inner}>
+        <h2 className={classes.heading}>Projects</h2>
+        <div className={classes.grid}>
+          {projects.map((project) => (
+            <BadgeCard key={project.id} project={project} />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

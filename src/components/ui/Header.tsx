@@ -1,51 +1,56 @@
-'use client'
-import { Icon3dCubeSphere, IconSearch } from '@tabler/icons-react';
-import { Autocomplete, Burger, Group } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+'use client';
+import { useState } from 'react';
+import Link from 'next/link';
+import { Icon3dCubeSphere } from '@tabler/icons-react';
 import classes from './Header.module.css';
 
 const links = [
-  { link: '/about', label: 'Features' },
-  { link: '/pricing', label: 'Pricing' },
-  { link: '/learn', label: 'Learn' },
-  { link: '/community', label: 'Community' },
+  { href: '/workex', label: 'Experience' },
+  { href: '/project', label: 'Projects' },
+  { href: '/blog', label: 'Blog' },
+  { href: '#about', label: 'About' },
 ];
 
 export function Header() {
-  const [opened, { toggle }] = useDisclosure(false);
-
-  const items = links.map((link) => (
-    <a
-      key={link.label}
-      href={link.link}
-      className={classes.link}
-      onClick={(event) => event.preventDefault()}
-    >
-      {link.label}
-    </a>
-  ));
+  const [open, setOpen] = useState(false);
 
   return (
     <header className={classes.header}>
       <div className={classes.inner}>
-        <Group>
-          <Burger opened={opened} onClick={toggle} size="sm" hiddenFrom="sm" />
-          <Icon3dCubeSphere/>
-        </Group>
+        <Link href="/" className={classes.logo} aria-label="Home">
+          <Icon3dCubeSphere size={24} />
+          <span>Vibhanshu</span>
+        </Link>
 
-        <Group>
-          <Group ml={50} gap={5} className={classes.links} visibleFrom="sm">
-            {items}
-          </Group>
-          <Autocomplete
-            className={classes.search}
-            placeholder="Search"
-            leftSection={<IconSearch size={16} stroke={1.5} />}
-            data={['React', 'Angular', 'Vue', 'Next.js', 'Riot.js', 'Svelte', 'Blitz.js']}
-            visibleFrom="xs"
-          />
-        </Group>
+        <nav className={classes.nav} aria-label="Main navigation">
+          {links.map((link) => (
+            <a key={link.label} href={link.href} className={classes.link}>
+              {link.label}
+            </a>
+          ))}
+        </nav>
+
+        <button
+          className={classes.burger}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label="Toggle navigation"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
       </div>
+
+      {open && (
+        <nav className={classes.mobileNav} aria-label="Mobile navigation">
+          {links.map((link) => (
+            <a key={link.label} href={link.href} className={classes.mobileLink} onClick={() => setOpen(false)}>
+              {link.label}
+            </a>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }

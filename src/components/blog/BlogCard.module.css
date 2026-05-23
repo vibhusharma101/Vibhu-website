@@ -1,15 +1,60 @@
 .card {
-  background-color: var(--mantine-color-body);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-6);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--duration-base) var(--ease-default),
+              box-shadow var(--duration-base) var(--ease-default);
+
+  &:hover {
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.date {
+  font-size: var(--text-xs);
+  color: var(--color-text-2);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.tag {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent-light);
+  color: var(--color-accent);
 }
 
 .title {
-  font-family: Outfit, var(--mantine-font-family);
-  font-weight: 450;
-  margin-top: var(--mantine-spacing-xs);
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-1);
+  line-height: var(--line-height-snug);
 }
 
-.footer {
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-lg);
-  margin-top: var(--mantine-spacing-md);
-  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+.excerpt {
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+  line-height: var(--line-height-relaxed);
+}
+
+.readMore {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  margin-top: var(--spacing-2);
 }

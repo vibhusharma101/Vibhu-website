@@ -1,7 +1,4 @@
-import '@mantine/core/styles.css';
 import './globals.css';
-
-import { ColorSchemeScript, MantineProvider, mantineHtmlProps } from '@mantine/core';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -28,17 +25,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" {...mantineHtmlProps}>
+    <html lang="en">
       <head>
-        <ColorSchemeScript />
         <link
           href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>
-        <MantineProvider>{children}</MantineProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

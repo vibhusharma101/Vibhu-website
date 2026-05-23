@@ -1,42 +1,49 @@
 ---
 name: frontend-design
-description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.
-license: Complete terms in LICENSE.txt
+description: Design and style UI sections for this personal portfolio landing page. Use when building or restyling Hero, WorkEx, MyProjects, AboutMe, Blog, Header, Footer, or ChatPopover. Guides aesthetic decisions, typography, spacing, and visual identity — avoiding generic AI-generated looks.
 ---
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+This is a personal portfolio for Vibhanshu Sharma — tech generalist, 2x founder, IIT Roorkee gold medalist. The design should feel like a sharp, confident engineer who has built real products at scale. Not a generic "hire me" template.
 
-The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
+## Before touching styles
 
-## Design Thinking
+Answer two questions:
+- **What is this section communicating?** (e.g. WorkEx = credibility + scale, Hero = immediate hook, Projects = proof of craft)
+- **What's the one thing a visitor should feel?** (trust, curiosity, "this person ships")
 
-Before coding, understand the context and commit to a BOLD aesthetic direction:
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
-- **Constraints**: Technical requirements (framework, performance, accessibility).
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
+## Aesthetic direction
 
-**CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+Committed choices for this site:
+- **No purple gradients, no rounded-2xl everything, no hero-with-stock-photo**
+- Clean, editorial feel — think a well-designed personal site, not a SaaS landing page
+- Dark mode first is fine; light mode needs to feel equally considered
+- Typography does the heavy lifting — pick fonts that feel distinctive, not default Inter/Arial
+- Whitespace is intentional: generous breathing room in sections, tight density in data-heavy parts (WorkEx timeline, project cards)
 
-Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
-- Production-grade and functional
-- Visually striking and memorable
-- Cohesive with a clear aesthetic point-of-view
-- Meticulously refined in every detail
+## Styling approach
 
-## Frontend Aesthetics Guidelines
+This project uses a mix — use whatever fits:
+- **Mantine components** for interactive elements (modals, popovers, badges, buttons)
+- **Tailwind v4** for layout, spacing, responsive utilities
+- **CSS Modules (.module.css)** for component-specific styles that need isolation or complex selectors
+- **Plain CSS variables** for site-wide tokens (colors, font sizes, spacing scale)
 
-Focus on:
-- **Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics; unexpected, characterful font choices. Pair a distinctive display font with a refined body font.
-- **Color & Theme**: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-- **Motion**: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Use scroll-triggering and hover states that surprise.
-- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Diagonal flow. Grid-breaking elements. Generous negative space OR controlled density.
-- **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
+Don't force everything through one system. A section can use Tailwind for layout and a CSS Module for the hover animation.
 
-NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
+## Section-specific notes
 
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
+| Section | Tone | Watch out for |
+|---|---|---|
+| Hero | Bold, immediate — first impression | Generic headline copy, weak CTA |
+| WorkEx | Structured, credible — show scale | Wall of text, no visual hierarchy |
+| MyProjects | Proof of craft — show real impact | Card layouts that look like every other portfolio |
+| AboutMe | Human, direct — not a resume | Over-formal, third-person voice |
+| Blog | Clean reading experience | Clutter, poor typography scale |
+| Header | Minimal, functional | Overcrowding the nav |
 
-**IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
+## What NOT to do
 
-Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+- Don't hardcode hex colors outside of CSS variables
+- Don't use `<img>` — use Next.js `<Image>`
+- Don't add animations that block interaction or feel gratuitous
+- Don't make it look like a Mantine UI demo or a Tailwind template clone

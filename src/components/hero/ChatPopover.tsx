@@ -1,39 +1,49 @@
-'use client'
+'use client';
 import { useState } from 'react';
-import { Affix, Popover, ActionIcon } from '@mantine/core';
-import { IconMessageCircle } from '@tabler/icons-react';
-import { ChatInterface } from './ChatInterface'; // Assuming you saved the component in this file
+import { IconMessageCircle, IconX } from '@tabler/icons-react';
+import { ChatInterface } from './ChatInterface';
 
 export function ChatPopover() {
-  // Type the state for the opened boolean
-  const [opened, setOpened] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <Affix position={{ bottom: 20, right: 20 }}>
-      <Popover
-        opened={opened}
-        onChange={setOpened}
-        position="top-end"
-        width={320}
-        shadow="md"
-        styles={{ dropdown: { padding: 0, background: 'none', border: 'none' } }}
-      >
-        <Popover.Target>
-          <ActionIcon
-            size="xl"
-            radius="xl"
-            variant="filled"
-            color="blue"
-            onClick={() => setOpened((o) => !o)}
-          >
-            <IconMessageCircle size={24} />
-          </ActionIcon>
-        </Popover.Target>
-
-        <Popover.Dropdown>
+    <div style={{ position: 'relative' }}>
+      {open && (
+        <div style={{
+          position: 'absolute',
+          bottom: '56px',
+          right: 0,
+          width: '320px',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-lg)',
+          overflow: 'hidden',
+          border: '1px solid var(--color-border-subtle)',
+          backgroundColor: 'var(--color-bg)',
+        }}>
           <ChatInterface />
-        </Popover.Dropdown>
-      </Popover>
-    </Affix>
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label={open ? 'Close chat' : 'Open chat'}
+        style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '50%',
+          backgroundColor: 'var(--color-accent)',
+          color: '#fff',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: 'var(--shadow-md)',
+          transition: 'background-color var(--duration-base)',
+        }}
+      >
+        {open ? <IconX size={20} /> : <IconMessageCircle size={20} />}
+      </button>
+    </div>
   );
 }

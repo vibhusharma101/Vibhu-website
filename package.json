@@ -9,8 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.3",
-    "@mantine/hooks": "^8.3.3",
     "@tabler/icons-react": "^3.35.0",
     "next": "15.5.4",
     "react": "19.1.0",
@@ -27,8 +25,6 @@
     "eslint-config-next": "15.5.4",
     "playwright": "^1.60.0",
     "postcss": "^8.5.6",
-    "postcss-preset-mantine": "^1.18.0",
-    "postcss-simple-vars": "^7.0.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^5"
   }

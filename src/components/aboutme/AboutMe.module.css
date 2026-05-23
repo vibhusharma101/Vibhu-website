@@ -1,63 +1,56 @@
-.wrapper {
-  display: flex;
-  align-items: center;
-  padding: calc(var(--mantine-spacing-xl) * 2);
-  border-radius: var(--mantine-radius-md);
-  background-color: light-dark(
-    var(--mantine-color-white),
-    var(--mantine-color-dark-8)
-  );
-  border: 1px solid
-    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-8));
-
-  @media (max-width: $mantine-breakpoint-sm) {
-    flex-direction: column-reverse;
-    padding: var(--mantine-spacing-xl);
-  }
+.section {
+  padding: var(--spacing-24) var(--spacing-6);
+  background-color: var(--color-surface);
 }
 
-.image {
-  max-width: 40%;
+.inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
 
-  @media (max-width: $mantine-breakpoint-sm) {
-    max-width: 100%;
+.label {
+  font-size: var(--text-xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.heading {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-1);
+  margin-bottom: var(--spacing-8);
+
+  @media (max-width: 48em) {
+    font-size: var(--text-2xl);
   }
 }
 
 .body {
-  padding-right: calc(var(--mantine-spacing-xl) * 4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-10);
 
-  @media (max-width: $mantine-breakpoint-sm) {
-    padding-right: 0;
-    margin-top: var(--mantine-spacing-xl);
+  p {
+    font-size: var(--text-base);
+    color: var(--color-text-2);
+    line-height: var(--line-height-relaxed);
   }
 }
 
-.title {
-  color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
-  font-family: Outfit, var(--mantine-font-family);
-  font-weight: 500;
-  line-height: 1;
-  margin-bottom: var(--mantine-spacing-md);
-}
+.cta {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  text-decoration: none;
 
-.controls {
-  display: flex;
-  margin-top: var(--mantine-spacing-xl);
-}
-
-.inputWrapper {
-  width: 100%;
-  flex: 1;
-}
-
-.input {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-right: 0;
-}
-
-.control {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  &:hover {
+    text-decoration: underline;
+  }
 }
