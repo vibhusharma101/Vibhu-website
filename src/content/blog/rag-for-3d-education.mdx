@@ -1,0 +1,109 @@
+---
+title: "Building RAG Search for 3D Educational Content"
+excerpt: "How I built a retrieval-augmented generation layer over 200+ 3D simulations — the technical decisions, the embedding strategy, and what actually worked."
+date: "2026-02-15"
+readTime: "7 min read"
+tags: ["ai", "rag", "llm", "vector-db", "python"]
+published: true
+---
+
+By mid-2023, Vignam had a problem: we had 200+ 3D simulations in the platform covering physics, chemistry, biology, and mathematics. Navigation was terrible. Teachers were spending 10 minutes browsing to find a simulation that took 30 seconds to explain.
+
+I built a RAG-based search layer to fix it. Here's the technical breakdown.
+
+## The problem with category-based navigation
+
+Tags and categories work for 20 items. At 200+, you need at least 50 tags to have meaningful granularity — and now the teacher has to understand your taxonomy, not their own mental model.
+
+The natural interface is language: "show me something about Newton's third law for a 9th grade class" should work. RAG makes this possible.
+
+## Architecture overview
+
+```
+Teacher query → embedding model → vector similarity search →
+top-k simulations → LLM reranking + explanation → results
+```
+
+The full stack:
+
+- **Embeddings:** OpenAI `text-embedding-3-small` (cost-effective, good quality for educational domain)
+- **Vector DB:** pgvector on our existing PostgreSQL — didn't want to introduce another service
+- **Retrieval:** cosine similarity, top-20 candidates
+- **Reranking:** GPT-4o-mini with a structured prompt to reorder by relevance + generate a one-line explanation
+- **API:** FastAPI, deployed on the same AWS EC2 as the rest of the backend
+
+## What we embedded
+
+The naive approach is to embed the simulation title. That's too sparse — "Newton's Third Law" doesn't capture that the simulation shows rockets.
+
+We generated structured documents for each simulation:
+
+```python
+def build_simulation_document(sim: Simulation) -> str:
+    return f"""
+    Title: {sim.title}
+    Subject: {sim.subject} | Grade: {sim.grade_range}
+    Description: {sim.description}
+    Learning objectives: {'; '.join(sim.objectives)}
+    Key concepts: {', '.join(sim.concepts)}
+    Teacher notes: {sim.teacher_notes}
+    """.strip()
+```
+
+This 200-400 token document per simulation captures enough semantic signal that the embedding model can do meaningful similarity search.
+
+## The pgvector setup
+
+Adding vector search to an existing Postgres database is remarkably low-friction:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+ALTER TABLE simulations 
+ADD COLUMN embedding vector(1536);
+
+CREATE INDEX ON simulations 
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+```
+
+The `ivfflat` index makes similarity search fast enough — sub-50ms for our corpus size. If we'd scaled to 10k+ simulations, HNSW would have been the right call.
+
+## The reranking step
+
+Raw vector similarity returns semantically related simulations. But "related" isn't the same as "what a teacher needs right now."
+
+The reranking prompt:
+
+```
+You are helping a teacher find 3D simulations for their class.
+
+Query: {query}
+Grade level: {grade_hint if provided}
+
+Candidate simulations:
+{candidates_formatted}
+
+Rerank these from most to least relevant. For each, write one sentence 
+explaining why it's relevant to the query. Return JSON.
+```
+
+This step costs about $0.002 per query at GPT-4o-mini pricing. Worth it — the UX improvement was dramatic.
+
+## What actually worked
+
+The key insight: **the document structure matters more than the embedding model.** We spent two weeks trying different embedding models and got marginal gains. When we improved the simulation document format to include teacher notes and curriculum alignment, search quality jumped significantly.
+
+The second key insight: **reranking is not optional for an educational use case.** Raw cosine similarity doesn't understand curriculum context. A simulation about "force and acceleration" is relevant to a Newton's Third Law query — but only if the grade level matches. The LLM reranker handles this naturally.
+
+## Latency
+
+End-to-end query latency was 800-1200ms. Not great, but acceptable for a search interface (teachers click search, don't type-to-search). If we'd needed real-time, I would have cached embeddings for common queries and streamed the reranking response.
+
+## What I'd do differently
+
+One thing: I built this as a separate FastAPI service from the start, which added deployment complexity. For a corpus under 5k items, a Node.js implementation using pgvector directly would have been simpler. The Python service only made sense when we needed the richer ML ecosystem (custom embedding fine-tuning experiments).
+
+---
+
+The full implementation is the kind of thing that looks complex in a blog post but took about two weeks to build and deploy. If you're building RAG over domain-specific content and want to talk through the architecture, I'm easy to reach.
