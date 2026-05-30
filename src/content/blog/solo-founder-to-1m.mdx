@@ -1,0 +1,58 @@
+---
+title: "Solo Founder to $1M Valuation: What Actually Happened"
+excerpt: "The unglamorous reality of building Vignam from zero — the technical decisions, the team, the mistakes, and what $1M valuation actually means."
+date: "2026-03-20"
+readTime: "8 min read"
+tags: ["founder", "startups", "vignam", "ai"]
+published: true
+---
+
+In July 2022, I left a stable engineering job at Powerplay to build Vignam alone. By September 2025, we had a $1M valuation, 20+ people on the team, and technology I'm genuinely proud of.
+
+Here's the honest version of what happened.
+
+## The idea
+
+The original thesis was simple: 3D interactive simulations for education are more effective than 2D video, but nobody had built the infrastructure to make them accessible at scale. Three.js and WebGL had matured enough to run in the browser. LLMs were just becoming usable. The timing felt right.
+
+I was wrong about several things. Right about the core thesis.
+
+## The first 90 days
+
+I was the only engineer. I wrote the 3D rendering engine, the React frontend, the Node.js backend, and the initial content creation tools. The stack looked like:
+
+- Three.js for browser-based 3D
+- React for the learning interface  
+- Node.js / Express for the API
+- PostgreSQL for structured data
+- AWS S3 for assets
+
+Looking back, I'd make mostly the same technology choices. The one I'd change: I started with a monolith, which was right, but I didn't invest in the testing infrastructure early enough. By month 6, I had a 40k-line codebase with almost no tests, which slowed every subsequent hire down.
+
+## The technical bets that paid off
+
+**RAG for simulation discovery.** By 2023, we had 200+ 3D simulations in the platform. Navigating them with tags and categories was terrible UX. I built a retrieval-augmented generation layer on top of vector embeddings — teachers could type "show me something about photosynthesis for grade 7" and get relevant simulations. This became a differentiating feature.
+
+**WebRTC for live classes.** Schools wanted to use Vignam for live instruction, not just async learning. Building a WebRTC layer that handled 200+ concurrent users at under 200ms latency was genuinely hard. The key insight: don't try to build a video platform, use a media server (we used mediasoup) and focus on the application layer.
+
+**PM2 clustering for the API.** As we scaled to lakhs of users, a single Node.js process wasn't enough. PM2 clustering with multiple processes behind a load balancer got us to 99.99% uptime without rewriting the backend.
+
+## What a $1M valuation actually means
+
+It means investors believed the thesis enough to put money in, not that the company is worth $1M in any liquidation sense.
+
+More importantly, it means I had to learn to be a CEO at the same time as being an engineer. The switch from "I build things" to "I build the system that builds things, and I build the team" is genuinely hard. I got it wrong for the first 6 months — I was the bottleneck on everything because I didn't delegate soon enough.
+
+## The team
+
+Going from solo to 20+ in 3 years means I made about 50 hiring decisions. The ones I got wrong: hiring for raw skills without checking for communication ability. The ones I got right: finding people who were obsessed with education as a problem, not just engineering as a craft.
+
+## What ended it
+
+Vignam wound down in September 2025, and I rejoined Powerplay. The market for ed-tech in India went through a tough correction post-COVID. We were building good technology, but the distribution problem in education is genuinely hard.
+
+I don't regret it. Building something real with a team you chose is one of the best experiences I've had.
+
+---
+
+If you're thinking about a solo founder journey in AI+vertical software, reach out. I'm happy to share the less-polished version over a call.
