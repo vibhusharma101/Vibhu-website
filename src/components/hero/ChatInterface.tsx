@@ -1,170 +1,113 @@
-"use client";
-import { useState, useRef, useEffect } from "react";
-import {
-  TextInput,
-  ActionIcon,
-  Group,
-  Stack,
-  Paper,
-  Text,
-  ScrollArea,
-  Box,
-} from "@mantine/core";
-import { IconSend } from "@tabler/icons-react";
+'use client';
+import { useState, useRef, useEffect } from 'react';
+import { IconSend } from '@tabler/icons-react';
 
-// Define a type for a single message object for type safety
 interface Message {
   id: number;
   text: string;
-  sender: "bot" | "me";
+  sender: 'bot' | 'me';
 }
 
-// Define the props for the ChatBubble component
-interface ChatBubbleProps {
-  message: Message;
-}
-
-// A single chat bubble component
-function ChatBubble({ message }: ChatBubbleProps) {
-  const isBot = message.sender === "bot";
+function ChatBubble({ message }: { message: Message }) {
+  const isBot = message.sender === 'bot';
   return (
-    <Box
-      style={{
-        display: "flex",
-        justifyContent: isBot ? "flex-start" : "flex-end",
-      }}
-    >
-      <Paper
-        shadow="sm"
-        p="xs"
-        radius="lg"
-        withBorder
-        style={{
-          maxWidth: "80%",
-          backgroundColor: isBot
-            ? "var(--mantine-color-gray-1)"
-            : "var(--mantine-color-blue-filled)",
-          color: isBot
-            ? "var(--mantine-color-black)"
-            : "var(--mantine-color-white)",
-        }}
-      >
-        <Text size="sm">{message.text}</Text>
-      </Paper>
-    </Box>
+    <div style={{ display: 'flex', justifyContent: isBot ? 'flex-start' : 'flex-end' }}>
+      <div style={{
+        maxWidth: '80%',
+        padding: '8px 12px',
+        borderRadius: isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
+        backgroundColor: isBot ? 'var(--color-surface)' : 'var(--color-accent)',
+        color: isBot ? 'var(--color-text-1)' : '#fff',
+        fontSize: 'var(--text-sm)',
+        lineHeight: 'var(--line-height-normal)',
+      }}>
+        {message.text}
+      </div>
+    </div>
   );
 }
 
-// The main chat interface component
 export function ChatInterface() {
-  // Type the state for the messages array
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Hi there! I'm a bot version of my owner. Ask me about my skills, projects, or experience.",
-      sender: "bot",
-    },
+    { id: 1, text: "Hi! I'm a bot version of Vibhanshu. Ask me about my skills, projects, or experience.", sender: 'bot' },
   ]);
-
-  // Type the state for the input value
-  const [inputValue, setInputValue] = useState<string>("");
-
-  // Type the ref for the ScrollArea viewport
-  const viewport = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    // The ref's current might be null, so we use optional chaining
-    viewport.current?.scrollTo({
-      top: viewport.current.scrollHeight,
-      behavior: "smooth",
-    });
-  };
+  const [input, setInput] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (inputValue.trim() === "") return;
-
-    const userMessage: Message = {
-      id: messages.length + 1,
-      text: inputValue,
-      sender: "me",
-    };
-    const botResponse: Message = {
-      id: messages.length + 2,
-      text: "Thanks for your message! This is a demo, but I hope you are enjoying the UI.",
-      sender: "bot",
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-
-    setTimeout(() => {
-      setMessages((prev) => [...prev, botResponse]);
-    }, 1000);
+  const send = () => {
+    if (!input.trim()) return;
+    const userMsg: Message = { id: messages.length + 1, text: input, sender: 'me' };
+    const botMsg: Message = { id: messages.length + 2, text: "Thanks for your message! This is a demo bot — check my projects and experience above.", sender: 'bot' };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setTimeout(() => setMessages((prev) => [...prev, botMsg]), 900);
   };
 
   return (
-    <Stack
-      gap="xs"
-      h={400}
-      style={{
-        border: "1px solid var(--mantine-color-gray-3)",
-        borderRadius: "var(--mantine-radius-md)",
-      }}
-    >
-      <Paper
-        p="sm"
-        shadow="xs"
-        withBorder
-        style={{
-          borderTopLeftRadius: "var(--mantine-radius-md)",
-          borderTopRightRadius: "var(--mantine-radius-md)",
-          borderBottom: 0,
-        }}
-      >
-        <Text fw={600} ta="center">
-          Chat to know more about me
-        </Text>
-      </Paper>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '380px' }}>
+      <div style={{
+        padding: '12px 16px',
+        borderBottom: '1px solid var(--color-border-subtle)',
+        fontWeight: 'var(--font-weight-medium)',
+        fontSize: 'var(--text-sm)',
+        textAlign: 'center',
+      }}>
+        Chat with Vibhanshu (bot)
+      </div>
 
-      <ScrollArea style={{ flex: 1 }} viewportRef={viewport} type="auto">
-        <Stack gap="sm" p="sm">
-          {messages.map((msg) => (
-            <ChatBubble key={msg.id} message={msg} />
-          ))}
-        </Stack>
-      </ScrollArea>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {messages.map((msg) => <ChatBubble key={msg.id} message={msg} />)}
+        <div ref={bottomRef} />
+      </div>
 
-      <Group
-        gap="xs"
-        p="sm"
-        style={{ borderTop: "1px solid var(--mantine-color-gray-3)" }}
-      >
-        <TextInput
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        padding: '12px',
+        borderTop: '1px solid var(--color-border-subtle)',
+      }}>
+        <input
+          type="text"
           placeholder="Ask me anything..."
-          style={{ flex: 1 }}
-          value={inputValue}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-            setInputValue(event.currentTarget.value)
-          }
-          onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-            if (event.key === "Enter") {
-              handleSendMessage();
-            }
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && send()}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            border: '1px solid var(--color-border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 'var(--text-sm)',
+            fontFamily: 'var(--font-sans)',
+            backgroundColor: 'var(--color-bg)',
+            color: 'var(--color-text-1)',
+            outline: 'none',
           }}
         />
-        <ActionIcon
-          size="lg"
-          radius="xl"
-          variant="filled"
-          onClick={handleSendMessage}
+        <button
+          onClick={send}
+          aria-label="Send message"
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'var(--color-accent)',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
         >
-          <IconSend size={18} />
-        </ActionIcon>
-      </Group>
-    </Stack>
+          <IconSend size={16} />
+        </button>
+      </div>
+    </div>
   );
 }

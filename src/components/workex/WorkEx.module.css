@@ -1,0 +1,128 @@
+.section {
+  padding: var(--spacing-24) var(--spacing-6);
+  background-color: var(--color-bg-alt);
+  color: var(--color-text-inverse);
+}
+
+.inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.heading {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-tight);
+  margin-bottom: var(--spacing-12);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  gap: var(--spacing-6);
+}
+
+.marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: rgba(255, 245, 239, 0.3);
+  border: 2px solid rgba(255, 245, 239, 0.3);
+  flex-shrink: 0;
+}
+
+.dotActive {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(0, 40, 255, 0.3);
+}
+
+.line {
+  width: 1px;
+  flex: 1;
+  background-color: rgba(255, 245, 239, 0.1);
+  margin: 6px 0;
+  min-height: 24px;
+}
+
+.content {
+  padding-bottom: var(--spacing-10);
+  flex: 1;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-2);
+}
+
+.period {
+  font-size: var(--text-xs);
+  color: rgba(255, 245, 239, 0.4);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.badge {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: rgba(0, 40, 255, 0.2);
+  color: #8aadff;
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.role {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-inverse);
+  margin-bottom: var(--spacing-1);
+}
+
+.company {
+  font-size: var(--text-sm);
+  color: rgba(255, 245, 239, 0.5);
+}
+
+.bullets {
+  margin: var(--spacing-4) 0;
+  padding-left: var(--spacing-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+
+  li {
+    font-size: var(--text-sm);
+    color: rgba(255, 245, 239, 0.7);
+    line-height: var(--line-height-relaxed);
+  }
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.skill {
+  font-size: var(--text-xs);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 245, 239, 0.12);
+  color: rgba(255, 245, 239, 0.5);
+}

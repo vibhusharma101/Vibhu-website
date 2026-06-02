@@ -1,34 +1,102 @@
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   height: 56px;
-  margin-bottom: 120px;
-  background-color: var(--mantine-color-body);
-  border-bottom: 1px solid
-    light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
-  padding-left: var(--mantine-spacing-md);
-  padding-right: var(--mantine-spacing-md);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 0 var(--spacing-6);
 }
 
 .inner {
-  height: 56px;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-sm);
+  color: var(--color-text-1);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+
+  @media (max-width: 48em) {
+    display: none;
+  }
+}
+
 .link {
   display: block;
-  line-height: 1;
-  padding: 8px 12px;
-  border-radius: var(--mantine-radius-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-2);
   text-decoration: none;
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
-  font-size: var(--mantine-font-size-sm);
-  font-weight: 500;
+  transition: color var(--duration-base) var(--ease-default),
+              background-color var(--duration-base) var(--ease-default);
 
-  @mixin hover {
-    background-color: light-dark(
-      var(--mantine-color-gray-0),
-      var(--mantine-color-dark-6)
-    );
+  &:hover {
+    color: var(--color-text-1);
+    background-color: var(--color-surface);
+  }
+}
+
+.burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+
+  span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background-color: var(--color-text-1);
+    border-radius: 1px;
+    transition: transform var(--duration-base) var(--ease-default);
+  }
+
+  @media (max-width: 48em) {
+    display: flex;
+  }
+}
+
+.mobileNav {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg);
+  border-top: 1px solid var(--color-border-subtle);
+  padding: var(--spacing-4) var(--spacing-6);
+}
+
+.mobileLink {
+  padding: var(--spacing-3) 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-1);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border-subtle);
+
+  &:last-child {
+    border-bottom: none;
   }
 }
