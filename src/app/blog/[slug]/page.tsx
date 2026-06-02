@@ -28,10 +28,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   const { meta, content } = post;
 
+  const otherPosts = allPosts.filter(p => p.slug !== slug);
+
   return (
     <BlogShell
       posts={allPosts}
       activeSlug={slug}
+      otherPosts={otherPosts}
       tabFile={`${slug}.mdx`}
       statusLine={`Markdown · ${meta.readTime} · ${meta.date}`}
     >

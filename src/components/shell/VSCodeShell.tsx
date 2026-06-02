@@ -12,6 +12,7 @@ import { WorkPanel } from '@/components/panels/WorkPanel';
 import { ProjectsPanel } from '@/components/panels/ProjectsPanel';
 import { AboutPanel } from '@/components/panels/AboutPanel';
 import { ContactPanel } from '@/components/panels/ContactPanel';
+import { BlogListPanel } from '@/components/panels/BlogListPanel';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import s from './shell.module.css';
 
@@ -53,6 +54,7 @@ export function VSCodeShell({ workex, projects, posts }: Props) {
     { id: 'projects', filename: 'projects.ts',    lang: 'ts',  git: 'U' },
     { id: 'about',    filename: 'about.md',       lang: 'md' },
     { id: 'contact',  filename: 'contact.sh',     lang: 'sh' },
+    { id: 'blog',     filename: 'blog.md',        lang: 'md' },
   ];
 
   return (
@@ -197,6 +199,7 @@ export function VSCodeShell({ workex, projects, posts }: Props) {
               {tab.id === 'projects' && <ProjectsPanel projects={projects} />}
               {tab.id === 'about'    && <AboutPanel />}
               {tab.id === 'contact'  && <ContactPanel />}
+              {tab.id === 'blog'     && <BlogListPanel posts={posts} />}
             </div>
           ))}
         </main>

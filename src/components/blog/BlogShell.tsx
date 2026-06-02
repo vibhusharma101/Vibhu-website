@@ -25,12 +25,13 @@ const BADGE: Record<Lang, { color: string; bg: string }> = {
 interface Props {
   posts: BlogPost[];
   activeSlug?: string | null;
+  otherPosts?: BlogPost[];
   tabFile: string;
   statusLine: string;
   children: React.ReactNode;
 }
 
-export function BlogShell({ posts, activeSlug, tabFile, statusLine, children }: Props) {
+export function BlogShell({ posts, activeSlug, otherPosts = [], tabFile, statusLine, children }: Props) {
   const [pagesOpen, setPagesOpen] = useState(false);
   const [blogOpen, setBlogOpen] = useState(true);
 
@@ -142,6 +143,19 @@ export function BlogShell({ posts, activeSlug, tabFile, statusLine, children }: 
           <div className={s.panel}>
             <Gutter />
             {children}
+            {otherPosts.length > 0 && (
+              <aside className={s.articleSidebar}>
+                <div className={s.articleSidebarHead}>{'// other posts'}</div>
+                <div className={s.articleSidebarList}>
+                  {otherPosts.map(p => (
+                    <Link key={p.slug} href={`/blog/${p.slug}`} className={s.articleSidebarItem}>
+                      <p className={s.articleSidebarItemTitle}>{p.title}</p>
+                      <span className={s.articleSidebarItemMeta}>{p.date} · {p.readTime}</span>
+                    </Link>
+                  ))}
+                </div>
+              </aside>
+            )}
           </div>
         </main>
 

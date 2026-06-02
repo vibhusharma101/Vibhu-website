@@ -1,4 +1,4 @@
-export type PanelId = 'home' | 'work' | 'projects' | 'about' | 'contact';
+export type PanelId = 'home' | 'work' | 'projects' | 'about' | 'contact' | 'blog';
 
 export interface Tab {
   id: PanelId;
@@ -13,6 +13,7 @@ export const TABS: Tab[] = [
   { id: 'projects', filename: 'projects.ts',    lang: 'ts',   langColor: 'var(--color-ts)' },
   { id: 'about',    filename: 'about.md',       lang: 'md',   langColor: 'var(--color-md)' },
   { id: 'contact',  filename: 'contact.sh',     lang: 'sh',   langColor: 'var(--color-sh)' },
+  { id: 'blog',     filename: 'blog.md',        lang: 'md',   langColor: 'var(--color-md)' },
 ];
 
 export const LANG_LABEL: Record<Tab['lang'], string> = {
