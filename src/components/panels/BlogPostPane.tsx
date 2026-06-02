@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import type { BlogPost } from '@/types/blog';
 import styles from '@/app/blog/[slug]/blog-post.module.css';
 import s from '@/components/shell/shell.module.css';
-import p from './panels.module.css';
 
 interface Props {
   post: BlogPost;

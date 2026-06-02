@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { IconHome } from '@tabler/icons-react';
 import type { WorkExEntry } from '@/data/workex';
 import type { Project } from '@/data/projects';
@@ -37,7 +36,6 @@ export function VSCodeShell({ workex, projects, posts, blogContents }: Props) {
   const [pagesOpen, setPagesOpen] = useState(true);
   const [blogOpen, setBlogOpen] = useState(true);
   const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null);
-  const router = useRouter();
 
   /* URL hash sync — /#work opens work panel */
   useEffect(() => {
