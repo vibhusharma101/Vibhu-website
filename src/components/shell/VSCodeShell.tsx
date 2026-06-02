@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { IconHome } from '@tabler/icons-react';
 import type { WorkExEntry } from '@/data/workex';
 import type { Project } from '@/data/projects';
@@ -12,6 +11,8 @@ import { WorkPanel } from '@/components/panels/WorkPanel';
 import { ProjectsPanel } from '@/components/panels/ProjectsPanel';
 import { AboutPanel } from '@/components/panels/AboutPanel';
 import { ContactPanel } from '@/components/panels/ContactPanel';
+import { BlogListPanel } from '@/components/panels/BlogListPanel';
+import { BlogPostPane } from '@/components/panels/BlogPostPane';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import s from './shell.module.css';
 
@@ -19,6 +20,7 @@ interface Props {
   workex: WorkExEntry[];
   projects: Project[];
   posts: BlogPost[];
+  blogContents: { slug: string; content: React.ReactNode }[];
 }
 
 const LANG_LABEL: Record<Tab['lang'], string> = {
@@ -29,11 +31,11 @@ const LANG_LABEL: Record<Tab['lang'], string> = {
   sh:   'Shell Script',
 };
 
-export function VSCodeShell({ workex, projects, posts }: Props) {
+export function VSCodeShell({ workex, projects, posts, blogContents }: Props) {
   const [activePanel, setActivePanel] = useState<PanelId>('home');
   const [pagesOpen, setPagesOpen] = useState(true);
   const [blogOpen, setBlogOpen] = useState(true);
-  const router = useRouter();
+  const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null);
 
   /* URL hash sync — /#work opens work panel */
   useEffect(() => {
@@ -53,6 +55,7 @@ export function VSCodeShell({ workex, projects, posts }: Props) {
     { id: 'projects', filename: 'projects.ts',    lang: 'ts',  git: 'U' },
     { id: 'about',    filename: 'about.md',       lang: 'md' },
     { id: 'contact',  filename: 'contact.sh',     lang: 'sh' },
+    { id: 'blog',     filename: 'blog.md',        lang: 'md' },
   ];
 
   return (
@@ -119,7 +122,11 @@ export function VSCodeShell({ workex, projects, posts }: Props) {
               filename={`${p.slug}.mdx`}
               lang="md"
               indent={2}
-              onClick={() => router.push(`/blog/${p.slug}`)}
+              active={selectedBlogSlug === p.slug && activePanel === 'blog'}
+              onClick={() => {
+                setActivePanel('blog');
+                setSelectedBlogSlug(p.slug);
+              }}
             />
           ))}
         </div>
@@ -188,15 +195,26 @@ export function VSCodeShell({ workex, projects, posts }: Props) {
               aria-labelledby={`tab-${tab.id}`}
               className={`${s.panel} ${activePanel !== tab.id ? s.hidden : ''}`}
             >
-              {/* Line-number gutter */}
-              <Gutter />
+              {/* Blog panel has its own full-width layout — no gutter */}
+              {tab.id !== 'blog' && <Gutter />}
 
-              {/* Panel content */}
               {tab.id === 'home'     && <HomePanel onNavigate={setActivePanel} />}
               {tab.id === 'work'     && <WorkPanel entries={workex} />}
               {tab.id === 'projects' && <ProjectsPanel projects={projects} />}
               {tab.id === 'about'    && <AboutPanel />}
               {tab.id === 'contact'  && <ContactPanel />}
+              {tab.id === 'blog' && (
+                selectedBlogSlug
+                  ? <BlogPostPane
+                      key={selectedBlogSlug}
+                      post={posts.find(p => p.slug === selectedBlogSlug)!}
+                      content={blogContents.find(b => b.slug === selectedBlogSlug)?.content ?? null}
+                      otherPosts={posts.filter(p => p.slug !== selectedBlogSlug)}
+                      onBack={() => setSelectedBlogSlug(null)}
+                      onSelectPost={setSelectedBlogSlug}
+                    />
+                  : <BlogListPanel posts={posts} onSelectPost={setSelectedBlogSlug} />
+              )}
             </div>
           ))}
         </main>
