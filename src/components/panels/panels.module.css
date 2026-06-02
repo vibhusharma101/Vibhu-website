@@ -6,6 +6,20 @@
   min-width: 0;
 }
 
+/* ── Blog card ── */
+.blogCard {
+  border: 1px solid var(--color-amber-deep);
+  padding: 16px 20px;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+  display: block;
+  text-decoration: none;
+}
+
+.blogCard:hover {
+  border-color: var(--color-amber-dim);
+  background: var(--color-amber-sub);
+}
+
 /* ── Hero panel — vertically centred, no overflow ── */
 .heroBody {
   flex: 1;
