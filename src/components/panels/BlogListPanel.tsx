@@ -5,9 +5,10 @@ import s from './panels.module.css';
 
 interface Props {
   posts: BlogPost[];
+  onSelectPost: (slug: string) => void;
 }
 
-export function BlogListPanel({ posts }: Props) {
+export function BlogListPanel({ posts, onSelectPost }: Props) {
   if (posts.length === 0) {
     return (
       <div className={s.panelBody}>
@@ -26,7 +27,7 @@ export function BlogListPanel({ posts }: Props) {
 
       <div className={s.blogGridMain}>
         {/* ── Featured post ── */}
-        <a href={`/blog/${featured.slug}`} className={s.blogFeatured}>
+        <button className={s.blogFeatured} onClick={() => onSelectPost(featured.slug)}>
           <span className={s.blogFeaturedLabel}>{'// featured'}</span>
           <h2 className={s.blogFeaturedTitle}>{featured.title}</h2>
           <p className={s.blogFeaturedExcerpt}>{featured.excerpt}</p>
@@ -39,13 +40,17 @@ export function BlogListPanel({ posts }: Props) {
             ))}
           </div>
           <span className={s.blogFeaturedCta}>read article →</span>
-        </a>
+        </button>
 
         {/* ── Top stories sidebar ── */}
         <div className={s.blogSideList}>
           <div className={s.blogSideHeader}>{'// top stories'}</div>
           {rest.map(post => (
-            <a key={post.slug} href={`/blog/${post.slug}`} className={s.blogSideItem}>
+            <button
+              key={post.slug}
+              className={s.blogSideItem}
+              onClick={() => onSelectPost(post.slug)}
+            >
               <div className={s.blogSideItemInner}>
                 <span className={s.blogSideDot} />
                 <div>
@@ -54,7 +59,7 @@ export function BlogListPanel({ posts }: Props) {
                   <span className={s.blogSideMeta}>{post.date} · {post.readTime}</span>
                 </div>
               </div>
-            </a>
+            </button>
           ))}
         </div>
       </div>
