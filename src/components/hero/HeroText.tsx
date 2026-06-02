@@ -12,7 +12,7 @@ export function HeroText() {
         <h1 className={classes.title}>
           Tech Generalist.{' '}
           <span className={classes.highlight}>2x Founder.</span>{' '}
-          Builder.
+          Builder.<span className={classes.cursor} aria-hidden="true" />
         </h1>
 
         <p className={classes.description}>
