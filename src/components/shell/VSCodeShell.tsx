@@ -17,6 +17,7 @@ import { ChatWidget } from '@/components/chat/ChatWidget';
 import s from './shell.module.css';
 
 interface Props {
+  initialPanel?: PanelId;
   workex: WorkExEntry[];
   projects: Project[];
   posts: BlogPost[];
@@ -31,21 +32,25 @@ const LANG_LABEL: Record<Tab['lang'], string> = {
   sh:   'Shell Script',
 };
 
-export function VSCodeShell({ workex, projects, posts, blogContents }: Props) {
-  const [activePanel, setActivePanel] = useState<PanelId>('home');
+export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, blogContents }: Props) {
+  const [activePanel, setActivePanel] = useState<PanelId>(initialPanel);
   const [pagesOpen, setPagesOpen] = useState(true);
   const [blogOpen, setBlogOpen] = useState(true);
   const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null);
 
-  /* URL hash sync — /#work opens work panel */
+  /* Sync URL pathname ↔ active panel (no hashes) */
   useEffect(() => {
-    const hash = window.location.hash.replace('#', '') as PanelId;
-    if (TABS.some(t => t.id === hash)) setActivePanel(hash);
-  }, []);
+    window.history.pushState(null, '', `/${activePanel}`);
+  }, [activePanel]);
 
   useEffect(() => {
-    history.replaceState(null, '', `#${activePanel}`);
-  }, [activePanel]);
+    const handlePop = () => {
+      const panel = window.location.pathname.replace('/', '') as PanelId;
+      if (TABS.some(t => t.id === panel)) setActivePanel(panel);
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
 
   const currentTab = TABS.find(t => t.id === activePanel)!;
 
