@@ -23,6 +23,21 @@ export function MathCanvas() {
     let raf: number;
     let t = 0;
 
+    const mouse = { x: -1, y: -1, active: false };
+    let freqOffCur = 0;
+    let ampScaleCur = 1;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.active = true;
+    };
+    const onMouseLeave = () => { mouse.active = false; };
+
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseleave', onMouseLeave);
+
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr  = window.devicePixelRatio || 1;
@@ -38,6 +53,12 @@ export function MathCanvas() {
     const draw = () => {
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
+
+      // Lerp toward mouse-driven targets
+      const targetFreqOff  = mouse.active ? (mouse.x / w) * 0.03 : 0;
+      const targetAmpScale = mouse.active ? 0.65 + (mouse.y / h) * 0.7 : 1;
+      freqOffCur  += (targetFreqOff  - freqOffCur)  * 0.06;
+      ampScaleCur += (targetAmpScale - ampScaleCur) * 0.06;
 
       // Background
       ctx.fillStyle = BG;
@@ -55,10 +76,9 @@ export function MathCanvas() {
       }
 
       const cy = h * 0.5;
-      const amp1 = h * 0.22;
-      const amp2 = h * 0.13;
+      const amp1 = h * 0.22 * ampScaleCur;
+      const amp2 = h * 0.13 * ampScaleCur;
 
-      // Glow helper
       const wave = (
         color: string,
         amp: number,
@@ -75,19 +95,16 @@ export function MathCanvas() {
         ctx.setLineDash(dash);
         ctx.beginPath();
         for (let x = 0; x <= w; x += 1) {
-          const y = cy + Math.sin(x * freq + phase) * amp;
+          const y = cy + Math.sin(x * (freq + freqOffCur) + phase) * amp;
           x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.stroke();
         ctx.restore();
       };
 
-      // Primary sine — amber
-      wave(AMBER,   amp1, 0.022, t,       2,   []);
-      // Secondary cosine — magenta dashed
-      wave(MAGENTA, amp2, 0.018, t + 1.4, 1.5, [5, 6]);
-      // Third harmonic — faint amber
-      wave(AMBER,   amp1 * 0.35, 0.046, t * 1.3, 1, [2, 8]);
+      wave(AMBER,   amp1,          0.022, t,       2,   []);
+      wave(MAGENTA, amp2,          0.018, t + 1.4, 1.5, [5, 6]);
+      wave(AMBER,   amp1 * 0.35,   0.046, t * 1.3, 1,   [2, 8]);
 
       // Center axis
       ctx.save();
@@ -109,11 +126,22 @@ export function MathCanvas() {
         ctx.globalAlpha = 1;
       });
 
+      // Mouse coordinate readout (top-right) while hovering
+      if (mouse.active) {
+        const mx = Math.round(mouse.x);
+        const my = Math.round(mouse.y);
+        ctx.font = '9px "IBM Plex Mono", monospace';
+        const label = `(${mx}, ${my})`;
+        const lw = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(245,166,35,0.28)';
+        ctx.fillText(label, w - lw - 12, 16);
+      }
+
       // Live stats — bottom right
       const stats = [
-        { k: 'users',    v: '500,000+' },
+        { k: 'users',     v: '500,000+' },
         { k: 'valuation', v: '$1,000,000' },
-        { k: 'uptime',   v: '99.98%' },
+        { k: 'uptime',    v: '99.98%' },
         { k: 'engineers', v: '20+' },
       ];
       ctx.font = '9.5px "IBM Plex Mono", monospace';
@@ -136,13 +164,18 @@ export function MathCanvas() {
     };
 
     draw();
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+    };
   }, []);
 
   return (
     <canvas
       ref={ref}
-      style={{ width: '100%', height: '100%', display: 'block' }}
+      style={{ width: '100%', height: '100%', display: 'block', cursor: 'crosshair' }}
       aria-hidden
     />
   );
