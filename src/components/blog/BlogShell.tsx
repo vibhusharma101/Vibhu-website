@@ -8,11 +8,11 @@ import s from '../shell/shell.module.css';
 type Lang = 'tsx' | 'ts' | 'md' | 'sh';
 
 const PAGE_FILES: Array<{ href: string; filename: string; lang: Lang }> = [
-  { href: '/#home',     filename: 'vibhanshu.tsx', lang: 'tsx' },
-  { href: '/#work',     filename: 'experience.ts', lang: 'ts'  },
-  { href: '/#projects', filename: 'projects.ts',   lang: 'ts'  },
-  { href: '/#about',    filename: 'about.md',      lang: 'md'  },
-  { href: '/#contact',  filename: 'contact.sh',    lang: 'sh'  },
+  { href: '/home',     filename: 'vibhanshu.tsx', lang: 'tsx' },
+  { href: '/work',     filename: 'experience.ts', lang: 'ts'  },
+  { href: '/projects', filename: 'projects.ts',   lang: 'ts'  },
+  { href: '/about',    filename: 'about.md',      lang: 'md'  },
+  { href: '/contact',  filename: 'contact.sh',    lang: 'sh'  },
 ];
 
 const BADGE: Record<Lang, { color: string; bg: string }> = {
@@ -110,7 +110,7 @@ export function BlogShell({ posts, activeSlug, otherPosts = [], tabFile, statusL
         {/* Header */}
         <header className={s.header}>
           <div className={s.menubar}>
-            <Link href="/#home" className={s.brand}>Vibhanshu Sharma</Link>
+            <Link href="/home" className={s.brand}>Vibhanshu Sharma</Link>
             <ul className={s.tabList} role="tablist">
               <li className={`${s.tab} ${s.active}`} role="tab">
                 <span className={s.tabLangDot} style={{ background: 'var(--color-md)' }} />
@@ -126,7 +126,7 @@ export function BlogShell({ posts, activeSlug, otherPosts = [], tabFile, statusL
           </div>
           <div className={s.subbar}>
             <div className={s.breadcrumb}>
-              <Link href="/#home">PORTFOLIO.SYS</Link>
+              <Link href="/home">PORTFOLIO.SYS</Link>
               <span className={s.breadcrumbSep}>›</span>
               <span>content</span>
               <span className={s.breadcrumbSep}>›</span>
