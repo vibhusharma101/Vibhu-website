@@ -83,7 +83,7 @@ export function ChatWidget() {
         aria-label="Open chat"
       >
         <span className={s.triggerDot} />
-        ask_vibhanshu_anything
+        <span className={s.triggerLabel}>ask_vibhanshu_anything</span>
       </button>
     );
   }
