@@ -1,82 +1,19 @@
-'use client';
-
-import type { BlogPost } from '@/types/blog';
 import s from './panels.module.css';
 
-interface Props {
-  posts: BlogPost[];
-  onSelectPost?: (slug: string) => void;
-}
-
-function PostCard({ post, onSelect, className }: { post: BlogPost; onSelect?: () => void; className: string }) {
-  const inner = (
-    <>
-      <span className={s.blogFeaturedLabel}>{'// featured'}</span>
-      <h2 className={s.blogFeaturedTitle}>{post.title}</h2>
-      <p className={s.blogFeaturedExcerpt}>{post.excerpt}</p>
-      <div className={s.blogFeaturedMeta}>
-        <time>{post.date}</time>
-        <span>·</span>
-        <span>{post.readTime}</span>
-        {post.tags.map(t => <span key={t} className={s.blogTag}>{t}</span>)}
-      </div>
-      <span className={s.blogFeaturedCta}>read article →</span>
-    </>
-  );
-  return onSelect
-    ? <button className={className} onClick={onSelect}>{inner}</button>
-    : <a href={`/blog/${post.slug}`} className={className}>{inner}</a>;
-}
-
-function SideItem({ post, onSelect }: { post: BlogPost; onSelect?: () => void }) {
-  const inner = (
-    <div className={s.blogSideItemInner}>
-      <span className={s.blogSideDot} />
-      <div>
-        <p className={s.blogSideTitle}>{post.title}</p>
-        <p className={s.blogSideExcerpt}>{post.excerpt}</p>
-        <span className={s.blogSideMeta}>{post.date} · {post.readTime}</span>
-      </div>
-    </div>
-  );
-  return onSelect
-    ? <button className={s.blogSideItem} onClick={onSelect}>{inner}</button>
-    : <a href={`/blog/${post.slug}`} className={s.blogSideItem}>{inner}</a>;
-}
-
-export function BlogListPanel({ posts, onSelectPost }: Props) {
-  if (posts.length === 0) {
-    return (
-      <div className={s.panelBody}>
-        <p className={s.codeComment}>blog.md — no posts yet, check back soon</p>
-      </div>
-    );
-  }
-
-  const [featured, ...rest] = posts;
-
+export function BlogListPanel() {
   return (
-    <div className={s.blogGrid}>
-      <div className={s.blogGridHeader}>
-        <span className={s.codeComment}>blog.md — {posts.length} article{posts.length !== 1 ? 's' : ''}</span>
-      </div>
-
-      <div className={s.blogGridMain}>
-        <PostCard
-          post={featured}
-          onSelect={onSelectPost ? () => onSelectPost(featured.slug) : undefined}
-          className={s.blogFeatured}
-        />
-
-        <div className={s.blogSideList}>
-          <div className={s.blogSideHeader}>{'// top stories'}</div>
-          {rest.map(post => (
-            <SideItem
-              key={post.slug}
-              post={post}
-              onSelect={onSelectPost ? () => onSelectPost(post.slug) : undefined}
-            />
-          ))}
+    <div className={s.blogComingSoon}>
+      <p className={s.codeComment}>blog.md</p>
+      <div className={s.blogComingSoonBody}>
+        <span className={s.blogComingSoonLabel}>{'// status'}</span>
+        <p className={s.blogComingSoonTitle}>Coming Soon.</p>
+        <p className={s.blogComingSoonSub}>
+          Writing in progress — thoughts on building companies,{' '}
+          AI, and the craft of software. Check back soon.
+        </p>
+        <div className={s.blogComingSoonMeta}>
+          <span className={s.bootPrompt}>→ </span>
+          <span className={s.bootValue}>estimated_eta = &quot;soon™&quot;</span>
         </div>
       </div>
     </div>
