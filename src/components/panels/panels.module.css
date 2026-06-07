@@ -360,6 +360,59 @@
   background: var(--color-magenta-soft);
 }
 
+/* ── Blog coming soon ── */
+.blogComingSoon {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.blogComingSoonBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 48px 56px;
+  max-width: 640px;
+}
+
+.blogComingSoonLabel {
+  font-size: 10px;
+  color: var(--color-amber-dim);
+  letter-spacing: 0.22em;
+  font-family: var(--font-mono);
+  margin-bottom: 16px;
+}
+
+.blogComingSoonTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(40px, 5vw, 72px);
+  font-weight: 700;
+  color: var(--color-amber-text);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  margin-bottom: 20px;
+  text-shadow: 3px 3px 0 var(--color-amber-deep);
+}
+
+.blogComingSoonSub {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--color-amber-dim);
+  line-height: 1.65;
+  font-style: italic;
+  margin-bottom: 28px;
+  max-width: 48ch;
+}
+
+.blogComingSoonMeta {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+}
+
 /* ── Work panel ── */
 .workEntry {
   display: grid;
@@ -746,3 +799,89 @@
 }
 
 .termSuccess::before { content: "✓ "; }
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE — panels
+   ═══════════════════════════════════════════════════ */
+
+/* ── Tablet (≤1024px) ── */
+@media (max-width: 1024px) {
+  /* Hero: stack vertically, show canvas below */
+  .heroLayout { flex-direction: column; overflow-y: auto; }
+  .heroBody {
+    flex: none;
+    overflow: visible;
+    justify-content: flex-start;
+    border-right: none;
+    border-bottom: 1px solid var(--color-amber-deep);
+    padding: 32px 36px;
+  }
+  .heroRight {
+    height: 260px;
+    min-height: 260px;
+    flex: none;
+  }
+
+  /* panelBody padding */
+  .panelBody { padding: 32px 36px 60px; }
+
+  /* Blog: single column, no sidebar */
+  .blogGridMain { grid-template-columns: 1fr; }
+  .blogSideList { display: none; }
+
+  /* Projects: 2 columns */
+  .projGrid { grid-template-columns: repeat(2, 1fr); }
+
+  /* About: single column */
+  .aboutGrid { grid-template-columns: 1fr; gap: 28px; }
+}
+
+/* ── Mobile (≤640px) ── */
+@media (max-width: 640px) {
+  /* Hero */
+  .heroLayout { overflow-y: auto; }
+  .heroBody { padding: 24px 20px; overflow: visible; justify-content: flex-start; }
+  .heroRight { display: none; }
+  .heroName { margin-bottom: 16px; }
+  .tagline { font-size: 14px; margin-bottom: 18px; }
+  .statsBar { flex-wrap: wrap; max-width: 100%; margin-bottom: 20px; }
+  .statBox { flex: 1 1 50%; }
+  .statBox:nth-child(2) { border-right: 0; }
+  .statBox:nth-child(3) { border-top: 1px solid var(--color-amber-deep); }
+  .statBox:nth-child(4) { border-top: 1px solid var(--color-amber-deep); border-right: 0; }
+  .ctaRow { flex-direction: column; }
+  .btn { width: 100%; text-align: center; justify-content: center; }
+
+  /* panelBody padding */
+  .panelBody { padding: 24px 16px 80px; }
+
+  /* Blog */
+  .blogFeatured { padding: 24px 20px; }
+  .blogGridHeader { padding: 12px 20px 10px; }
+
+  /* Projects: 1 column */
+  .projGrid { grid-template-columns: 1fr; }
+
+  /* Work: collapse 3-col grid to single column */
+  .workEntry {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 28px 0;
+  }
+  .entryNum { display: none; }
+  .outcome {
+    text-align: left;
+    border-top: 1px dashed var(--color-amber-deep);
+    padding-top: 10px;
+  }
+  .company { font-size: clamp(24px, 6vw, 36px); }
+
+  /* About */
+  .aboutGrid { grid-template-columns: 1fr; gap: 20px; }
+  .bioText { font-size: 15px; }
+  .bioText:first-of-type::first-letter { font-size: 48px; }
+
+  /* Contact */
+  .contactBody { padding: 24px 16px; align-items: flex-start; }
+  .termForm { max-width: 100%; }
+}

@@ -37,6 +37,12 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
   const [pagesOpen, setPagesOpen] = useState(true);
   const [blogOpen, setBlogOpen] = useState(true);
   const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navigate = (panel: PanelId) => {
+    setActivePanel(panel);
+    setSidebarOpen(false);
+  };
 
   /* Sync URL pathname ↔ active panel (no hashes) */
   useEffect(() => {
@@ -67,7 +73,10 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
     <div className={s.shell}>
 
       {/* ══════ SIDEBAR ══════ */}
-      <nav className={s.sidebar}>
+      {sidebarOpen && (
+        <div className={s.sidebarOverlay} onClick={() => setSidebarOpen(false)} />
+      )}
+      <nav className={`${s.sidebar} ${sidebarOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarHead}>
           <span className={s.sidebarTitle}>Explorer</span>
           <div className={s.sidebarActions}>
@@ -86,7 +95,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             active={activePanel === 'home'}
             indent={1}
             icon={<IconHome size={13} style={{ color: 'var(--color-amber)', flexShrink: 0 }} />}
-            onClick={() => setActivePanel('home')}
+            onClick={() => navigate('home')}
           />
 
           {/* ── pages/ folder ── */}
@@ -107,7 +116,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
               git={f.git}
               active={activePanel === f.id}
               indent={2}
-              onClick={() => setActivePanel(f.id)}
+              onClick={() => navigate(f.id)}
             />
           ))}
 
@@ -121,19 +130,6 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             <span>📁</span><span>blog</span>
           </button>
 
-          {blogOpen && posts.map(p => (
-            <SidebarFile
-              key={`blog-${p.slug}`}
-              filename={`${p.slug}.mdx`}
-              lang="md"
-              indent={2}
-              active={selectedBlogSlug === p.slug && activePanel === 'blog'}
-              onClick={() => {
-                setActivePanel('blog');
-                setSelectedBlogSlug(p.slug);
-              }}
-            />
-          ))}
         </div>
 
         <div className={s.sidebarBottom}>
@@ -148,6 +144,13 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
         {/* Header */}
         <header className={s.header}>
           <div className={s.menubar}>
+            <button
+              className={s.hamburger}
+              onClick={() => setSidebarOpen(o => !o)}
+              aria-label="Toggle sidebar"
+            >
+              {sidebarOpen ? '✕' : '☰'}
+            </button>
             <div className={s.brand}>Vibhanshu Sharma</div>
 
             <ul className={s.tabList} role="tablist">
@@ -218,7 +221,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
                       onBack={() => setSelectedBlogSlug(null)}
                       onSelectPost={setSelectedBlogSlug}
                     />
-                  : <BlogListPanel posts={posts} onSelectPost={setSelectedBlogSlug} />
+                  : <BlogListPanel />
               )}
             </div>
           ))}
