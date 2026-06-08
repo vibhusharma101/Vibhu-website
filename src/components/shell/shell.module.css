@@ -598,9 +598,9 @@
   .tabList { margin: 0 4px; }
   .tabLangDot { width: 5px; height: 5px; }
 
-  /* Brand compact */
+  /* Brand hidden — tabs + hamburger are enough on mobile */
+  .brand { display: none; }
   .menubar { padding: 0 12px; gap: 8px; }
-  .brand { font-size: 13px; }
 
   /* Panel scrolls instead of clipping */
   .panel { overflow-y: auto; }
