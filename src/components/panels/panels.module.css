@@ -840,7 +840,7 @@
 @media (max-width: 640px) {
   /* Hero */
   .heroLayout { overflow-y: auto; }
-  .heroBody { padding: 24px 20px; overflow: visible; justify-content: flex-start; }
+  .heroBody { padding: 24px 20px 80px; overflow: visible; justify-content: flex-start; }
   .heroRight { display: none; }
   .heroName { margin-bottom: 16px; }
   .tagline { font-size: 14px; margin-bottom: 18px; }
