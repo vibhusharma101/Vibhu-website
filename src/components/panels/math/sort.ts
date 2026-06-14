@@ -130,9 +130,9 @@ export const runSort: VizRunner = (canvas, ctx) => {
     const maxBarH = baseline - topPad;
 
     const slotOf = new Array<number>(N + 1);
-    for (let s = 0; s < N; s++) slotOf[order[s]] = s;
 
     if (!initialized) {
+      for (let s = 0; s < N; s++) slotOf[order[s]] = s;
       for (let v = 1; v <= N; v++) displayX[v] = padX + slotOf[v] * barW + barW / 2;
       initialized = true;
     }
