@@ -1,6 +1,6 @@
 import type { PanelId } from '@/types/panel';
 import { bio } from '@/data/bio';
-import { MathCanvas } from './MathCanvas';
+import { MathVisualizer } from './MathVisualizer';
 import s from './panels.module.css';
 
 interface Props {
@@ -58,7 +58,7 @@ export function HomePanel({ onNavigate }: Props) {
 
       {/* ── Right: math visualizer ── */}
       <div className={s.heroRight}>
-        <MathCanvas />
+        <MathVisualizer />
       </div>
     </div>
   );

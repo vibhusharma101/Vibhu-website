@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Icon3dCubeSphere } from '@tabler/icons-react';
+import Image from 'next/image';
 import classes from './Header.module.css';
 
 const links = [
@@ -18,8 +18,7 @@ export function Header() {
     <header className={classes.header}>
       <div className={classes.inner}>
         <Link href="/" className={classes.logo} aria-label="Home">
-          <Icon3dCubeSphere size={24} />
-          <span>Vibhanshu</span>
+          <Image src="/logo.png" alt="VS" width={36} height={36} priority style={{ borderRadius: 6 }} />
         </Link>
 
         <nav className={classes.nav} aria-label="Main navigation">
