@@ -224,7 +224,7 @@ export const runSort: VizRunner = (canvas, ctx) => {
     seg('    n ', String(N), lx);
 
     // line 3: time complexity
-    ctx.fillStyle = 'rgba(245,166,35,0.6)';
+    ctx.fillStyle = 'rgba(245,166,35,0.85)';
     ctx.fillText(`time complexity  ${al.big}`, padX, 45);
 
     // bottom: plain-english strategy

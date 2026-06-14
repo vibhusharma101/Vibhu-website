@@ -4,7 +4,7 @@ export const AMBER   = '#f5a623';
 export const MAGENTA = '#ff1463';
 export const GRID    = 'rgba(58, 37, 8, 0.45)';
 export const BG      = '#030201';
-export const DIM     = 'rgba(58,37,8,0.6)';
+export const DIM     = 'rgba(200,180,150,0.6)';
 export const MONO    = '"IBM Plex Mono", monospace';
 
 /** A self-contained animation. Receives a sized canvas + 2d context, returns a cleanup fn. */
