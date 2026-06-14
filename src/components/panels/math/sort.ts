@@ -71,9 +71,24 @@ const bubbleOps = (start: number[]): Op[] => {
 };
 
 const ALGOS = [
-  { label: 'QUICK SORT',  gen: quickOps  },
-  { label: 'HEAP SORT',   gen: heapOps   },
-  { label: 'BUBBLE SORT', gen: bubbleOps },
+  {
+    label: 'QUICK SORT',
+    gen: quickOps,
+    big: 'Θ(n log n) avg · O(n²) worst',
+    desc: 'pick a pivot, push smaller values left, then recurse each side',
+  },
+  {
+    label: 'HEAP SORT',
+    gen: heapOps,
+    big: 'Θ(n log n) always',
+    desc: 'build a max-heap, repeatedly pull the largest to the end',
+  },
+  {
+    label: 'BUBBLE SORT',
+    gen: bubbleOps,
+    big: 'Θ(n²) avg · O(n) best',
+    desc: 'compare neighbours and swap if out of order, pass after pass',
+  },
 ];
 
 /**
@@ -96,20 +111,20 @@ export const runSort: VizRunner = (canvas, ctx) => {
   let swaps = 0;
   let phase: 'shuffle' | 'sorting' | 'done' = 'sorting';
   let phaseTimer = 0;
-  let cmpA = -1, cmpB = -1, cmpGlow = 0;
+  let cmpA = -1, cmpB = -1;
   let initialized = false;
 
   const displayX = new Float32Array(N + 1); // pixel centre per value (1..N)
 
-  const DURATION = 480;       // frames to complete a sort
-  const HOLD = 95;            // frames holding the sorted state
-  const SHUFFLE_SETTLE = 32;  // frames for bars to glide into a new shuffle
+  const DURATION = 660;       // frames to complete a sort (slower = followable)
+  const HOLD = 120;           // frames holding the sorted state
+  const SHUFFLE_SETTLE = 40;  // frames for bars to glide into a new shuffle
 
   const draw = () => {
     const w = canvas.offsetWidth, h = canvas.offsetHeight;
     ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);
 
-    const padX = 16, topPad = 34, botPad = 26;
+    const padX = 16, topPad = 42, botPad = 38;
     const barW = (w - padX * 2) / N;
     const baseline = h - botPad;
     const maxBarH = baseline - topPad;
@@ -128,7 +143,7 @@ export const runSort: VizRunner = (canvas, ctx) => {
       while (opAccum >= 1 && opPtr < ops.length) {
         const op = ops[opPtr++];
         opAccum -= 1;
-        cmpA = op.i; cmpB = op.j; cmpGlow = 1;
+        cmpA = op.i; cmpB = op.j;
         if (op.type === 'cmp') { comparisons++; }
         else { const t = order[op.i]; order[op.i] = order[op.j]; order[op.j] = t; swaps++; }
       }
@@ -149,7 +164,6 @@ export const runSort: VizRunner = (canvas, ctx) => {
 
     // slots may have changed after swaps
     for (let s = 0; s < N; s++) slotOf[order[s]] = s;
-    cmpGlow *= 0.9;
 
     // baseline axis
     ctx.strokeStyle = 'rgba(245,166,35,0.14)'; ctx.lineWidth = 1; ctx.setLineDash([]);
@@ -185,18 +199,34 @@ export const runSort: VizRunner = (canvas, ctx) => {
 
     // ── labels ──
     const al = ALGOS[algoIdx];
+
+    // top: algorithm name + live progress, then time complexity
     ctx.font = `11px ${MONO}`;
     ctx.fillStyle = done ? MAGENTA : AMBER;
-    ctx.fillText(done ? `${al.label}  ✓ sorted` : al.label, padX, 18);
+    ctx.fillText(done ? `${al.label}  ✓ sorted` : al.label, padX, 16);
 
     if (phase === 'sorting') {
       const p = `${Math.round((opPtr / ops.length) * 100)}%`;
       ctx.font = `9px ${MONO}`; ctx.fillStyle = DIM;
-      ctx.fillText(p, w - padX - ctx.measureText(p).width, 18);
+      ctx.fillText(p, w - padX - ctx.measureText(p).width, 16);
     }
 
+    ctx.font = `9px ${MONO}`; ctx.fillStyle = 'rgba(245,166,35,0.6)';
+    ctx.fillText(`time complexity  ${al.big}`, padX, 31);
+
+    // bottom: plain-english strategy, then live counters (numbers in amber)
     ctx.font = `9px ${MONO}`; ctx.fillStyle = DIM;
-    ctx.fillText(`comparisons ${comparisons}   swaps ${swaps}   n = ${N}`, padX, h - 9);
+    ctx.fillText(al.desc, padX, h - 24);
+
+    const seg = (label: string, value: string, x: number) => {
+      ctx.fillStyle = DIM; ctx.fillText(label, x, h - 9);
+      const lw = ctx.measureText(label).width;
+      ctx.fillStyle = AMBER; ctx.fillText(value, x + lw, h - 9);
+      return x + lw + ctx.measureText(value).width;
+    };
+    let lx = seg('comparisons ', String(comparisons), padX);
+    lx = seg('    swaps ', String(swaps), lx);
+    seg('    n ', String(N), lx);
 
     raf = requestAnimationFrame(draw);
   };
