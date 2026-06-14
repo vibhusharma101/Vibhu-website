@@ -212,6 +212,52 @@
   background: var(--color-bg);
 }
 
+/* ── Math visualizer (right panel of hero) ── */
+.mathWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabBar {
+  flex-shrink: 0;
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-amber-deep);
+  background: var(--color-bg2);
+}
+
+.tabBtn {
+  font: 600 8.5px/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--color-amber-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.tabBtn:hover {
+  color: var(--color-amber-text);
+  background: var(--color-amber-sub);
+}
+
+.tabBtnActive {
+  color: var(--color-amber);
+  border-color: var(--color-amber-dim);
+  background: var(--color-amber-sub);
+}
+
+.mathCanvas {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
 /* ── Code comment decoration ── */
 .codeComment {
   font-size: 11.5px;

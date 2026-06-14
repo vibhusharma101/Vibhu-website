@@ -21,6 +21,10 @@ export const metadata: Metadata = {
     description: 'IIT Roorkee Gold Medalist. 2x founder. Currently leading AI engineering at Powerplay.',
   },
   robots: { index: true, follow: true },
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
