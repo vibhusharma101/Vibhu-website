@@ -124,7 +124,7 @@ export const runSort: VizRunner = (canvas, ctx) => {
     const w = canvas.offsetWidth, h = canvas.offsetHeight;
     ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);
 
-    const padX = 16, topPad = 42, botPad = 38;
+    const padX = 16, topPad = 54, botPad = 22;
     const barW = (w - padX * 2) / N;
     const baseline = h - botPad;
     const maxBarH = baseline - topPad;
@@ -197,10 +197,10 @@ export const runSort: VizRunner = (canvas, ctx) => {
       }
     }
 
-    // ── labels ──
+    // ── labels (all at the top) ──
     const al = ALGOS[algoIdx];
 
-    // top: algorithm name + live progress, then time complexity
+    // line 1: algorithm name + live progress
     ctx.font = `11px ${MONO}`;
     ctx.fillStyle = done ? MAGENTA : AMBER;
     ctx.fillText(done ? `${al.label}  ✓ sorted` : al.label, padX, 16);
@@ -211,22 +211,25 @@ export const runSort: VizRunner = (canvas, ctx) => {
       ctx.fillText(p, w - padX - ctx.measureText(p).width, 16);
     }
 
-    ctx.font = `9px ${MONO}`; ctx.fillStyle = 'rgba(245,166,35,0.6)';
-    ctx.fillText(`time complexity  ${al.big}`, padX, 31);
-
-    // bottom: plain-english strategy, then live counters (numbers in amber)
-    ctx.font = `9px ${MONO}`; ctx.fillStyle = DIM;
-    ctx.fillText(al.desc, padX, h - 24);
-
+    // line 2: live counters (numbers in amber so they pop as they climb)
+    ctx.font = `9px ${MONO}`;
     const seg = (label: string, value: string, x: number) => {
-      ctx.fillStyle = DIM; ctx.fillText(label, x, h - 9);
+      ctx.fillStyle = DIM; ctx.fillText(label, x, 31);
       const lw = ctx.measureText(label).width;
-      ctx.fillStyle = AMBER; ctx.fillText(value, x + lw, h - 9);
+      ctx.fillStyle = AMBER; ctx.fillText(value, x + lw, 31);
       return x + lw + ctx.measureText(value).width;
     };
     let lx = seg('comparisons ', String(comparisons), padX);
     lx = seg('    swaps ', String(swaps), lx);
     seg('    n ', String(N), lx);
+
+    // line 3: time complexity
+    ctx.fillStyle = 'rgba(245,166,35,0.6)';
+    ctx.fillText(`time complexity  ${al.big}`, padX, 45);
+
+    // bottom: plain-english strategy
+    ctx.fillStyle = DIM;
+    ctx.fillText(al.desc, padX, h - 9);
 
     raf = requestAnimationFrame(draw);
   };
