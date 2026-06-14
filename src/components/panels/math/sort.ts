@@ -1,132 +1,203 @@
-import { MAGENTA, BG, DIM, MONO, drawGrid, valColor, type VizRunner } from './shared';
+import { AMBER, MAGENTA, BG, DIM, MONO, valColor, type VizRunner } from './shared';
 
-type Step = { arr: number[]; cmp: [number, number] | null };
+type Op = { type: 'cmp' | 'swap'; i: number; j: number };
 
-const shuffle = (arr: number[]) => {
-  const a = [...arr];
-  // deterministic shuffle so every run starts identically across the 3 columns
+const N = 40;
+
+const makeShuffle = () => {
+  const a = Array.from({ length: N }, (_, i) => i + 1);
   for (let i = a.length - 1; i > 0; i--) {
-    const j = (i * 2654435769) % (i + 1);
+    const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 };
 
-const buildQuick = (arr: number[]): Step[] => {
-  const steps: Step[] = []; const a = [...arr];
+// Each generator replays a sort over a copy of `start`, recording every
+// comparison and swap as a slot-indexed op. Swaps are what physically move bars.
+const quickOps = (start: number[]): Op[] => {
+  const ops: Op[] = []; const a = [...start];
   const qs = (lo: number, hi: number) => {
     if (lo >= hi) return;
-    const pivot = a[hi]; let i = lo - 1;
+    const pivot = a[hi]; let i = lo;
     for (let j = lo; j < hi; j++) {
-      steps.push({ arr: [...a], cmp: [j, hi] });
-      if (a[j] <= pivot) { i++; [a[i], a[j]] = [a[j], a[i]]; steps.push({ arr: [...a], cmp: [i, j] }); }
+      ops.push({ type: 'cmp', i: j, j: hi });
+      if (a[j] < pivot) {
+        if (i !== j) { [a[i], a[j]] = [a[j], a[i]]; ops.push({ type: 'swap', i, j }); }
+        i++;
+      }
     }
-    [a[i + 1], a[hi]] = [a[hi], a[i + 1]];
-    steps.push({ arr: [...a], cmp: null });
-    qs(lo, i); qs(i + 2, hi);
+    if (i !== hi) { [a[i], a[hi]] = [a[hi], a[i]]; ops.push({ type: 'swap', i, j: hi }); }
+    qs(lo, i - 1); qs(i + 1, hi);
   };
   qs(0, a.length - 1);
-  steps.push({ arr: [...a], cmp: null });
-  return steps;
+  return ops;
 };
 
-const buildBubble = (arr: number[]): Step[] => {
-  const steps: Step[] = []; const a = [...arr];
-  for (let i = 0; i < a.length - 1; i++)
-    for (let j = 0; j < a.length - i - 1; j++) {
-      steps.push({ arr: [...a], cmp: [j, j + 1] });
-      if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; steps.push({ arr: [...a], cmp: [j, j + 1] }); }
+const heapOps = (start: number[]): Op[] => {
+  const ops: Op[] = []; const a = [...start]; const n = a.length;
+  const sift = (root: number, end: number) => {
+    while (2 * root + 1 <= end) {
+      const child = 2 * root + 1; let swp = root;
+      ops.push({ type: 'cmp', i: swp, j: child });
+      if (a[swp] < a[child]) swp = child;
+      if (child + 1 <= end) {
+        ops.push({ type: 'cmp', i: swp, j: child + 1 });
+        if (a[swp] < a[child + 1]) swp = child + 1;
+      }
+      if (swp === root) return;
+      [a[root], a[swp]] = [a[swp], a[root]];
+      ops.push({ type: 'swap', i: root, j: swp });
+      root = swp;
     }
-  steps.push({ arr: [...a], cmp: null });
-  return steps;
-};
-
-const buildMerge = (arr: number[]): Step[] => {
-  const steps: Step[] = []; const a = [...arr];
-  const merge = (lo: number, mid: number, hi: number) => {
-    const left = a.slice(lo, mid + 1), right = a.slice(mid + 1, hi + 1);
-    let i = 0, j = 0, k = lo;
-    while (i < left.length && j < right.length) {
-      steps.push({ arr: [...a], cmp: [lo + i, mid + 1 + j] });
-      if (left[i] <= right[j]) a[k++] = left[i++]; else a[k++] = right[j++];
-    }
-    while (i < left.length) a[k++] = left[i++];
-    while (j < right.length) a[k++] = right[j++];
-    steps.push({ arr: [...a], cmp: null });
   };
-  const ms = (lo: number, hi: number) => { if (lo >= hi) return; const mid = (lo + hi) >> 1; ms(lo, mid); ms(mid + 1, hi); merge(lo, mid, hi); };
-  ms(0, a.length - 1);
-  steps.push({ arr: [...a], cmp: null });
-  return steps;
+  for (let s = Math.floor(n / 2) - 1; s >= 0; s--) sift(s, n - 1);
+  for (let end = n - 1; end > 0; end--) {
+    [a[0], a[end]] = [a[end], a[0]];
+    ops.push({ type: 'swap', i: 0, j: end });
+    sift(0, end - 1);
+  }
+  return ops;
 };
+
+const bubbleOps = (start: number[]): Op[] => {
+  const ops: Op[] = []; const a = [...start];
+  for (let i = 0; i < a.length - 1; i++)
+    for (let j = 0; j < a.length - 1 - i; j++) {
+      ops.push({ type: 'cmp', i: j, j: j + 1 });
+      if (a[j] > a[j + 1]) { [a[j], a[j + 1]] = [a[j + 1], a[j]]; ops.push({ type: 'swap', i: j, j: j + 1 }); }
+    }
+  return ops;
+};
+
+const ALGOS = [
+  { label: 'QUICK SORT',  gen: quickOps  },
+  { label: 'HEAP SORT',   gen: heapOps   },
+  { label: 'BUBBLE SORT', gen: bubbleOps },
+];
 
 /**
- * Three algorithms sorting the same shuffled array, side by side. Playback is
- * time-normalized so all three finish together (the op counter reveals the real
- * cost gap); bar widths lerp toward their targets so swaps glide instead of
- * snapping, and the same lerp absorbs the loop reset smoothly.
+ * One full-width bar chart, height + colour encode value. Every value is a
+ * persistent bar whose x-position eases toward its current slot, so a swap is
+ * two bars sliding past each other — never a snap. Each algorithm is normalized
+ * to a fixed duration (followable regardless of op count); the comparison/swap
+ * counters expose the real cost gap. Finishes with a left→right "sorted" sweep,
+ * then smoothly re-shuffles for the next algorithm.
  */
 export const runSort: VizRunner = (canvas, ctx) => {
-  const N = 30;
-  const shuffled = shuffle(Array.from({ length: N }, (_, i) => i + 1));
-  const algos = [
-    { label: 'QUICKSORT',  steps: buildQuick(shuffled)  },
-    { label: 'MERGESORT',  steps: buildMerge(shuffled)  },
-    { label: 'BUBBLESORT', steps: buildBubble(shuffled) },
-  ];
-  const DURATION = 560; // frames spent sorting
-  const HOLD = 130;     // frames holding the finished state
-  const disp = algos.map(() => [...shuffled]); // currently displayed widths
-  let frame = 0;
   let raf = 0;
+
+  let algoIdx = 0;
+  let order = makeShuffle();
+  let ops = ALGOS[algoIdx].gen(order);
+  let opPtr = 0;
+  let opAccum = 0;
+  let comparisons = 0;
+  let swaps = 0;
+  let phase: 'shuffle' | 'sorting' | 'done' = 'sorting';
+  let phaseTimer = 0;
+  let cmpA = -1, cmpB = -1, cmpGlow = 0;
+  let initialized = false;
+
+  const displayX = new Float32Array(N + 1); // pixel centre per value (1..N)
+
+  const DURATION = 480;       // frames to complete a sort
+  const HOLD = 95;            // frames holding the sorted state
+  const SHUFFLE_SETTLE = 32;  // frames for bars to glide into a new shuffle
 
   const draw = () => {
     const w = canvas.offsetWidth, h = canvas.offsetHeight;
     ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);
-    drawGrid(ctx, w, h);
 
-    const colW = w / 3, top = 30, bot = 24;
-    const barH = (h - top - bot) / N;
-    const maxW = colW - 26;
-    const progress = Math.min(frame / DURATION, 1);
-    const done = progress >= 1;
+    const padX = 16, topPad = 34, botPad = 26;
+    const barW = (w - padX * 2) / N;
+    const baseline = h - botPad;
+    const maxBarH = baseline - topPad;
 
-    algos.forEach((al, ci) => {
-      const x0 = ci * colW;
-      const si = Math.floor(progress * (al.steps.length - 1));
-      const { arr, cmp } = al.steps[si];
+    const slotOf = new Array<number>(N + 1);
+    for (let s = 0; s < N; s++) slotOf[order[s]] = s;
 
-      if (ci > 0) {
-        ctx.strokeStyle = 'rgba(58,37,8,0.6)'; ctx.lineWidth = 1; ctx.setLineDash([]);
-        ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0, h); ctx.stroke();
+    if (!initialized) {
+      for (let v = 1; v <= N; v++) displayX[v] = padX + slotOf[v] * barW + barW / 2;
+      initialized = true;
+    }
+
+    // ── advance the simulation ──
+    if (phase === 'sorting') {
+      opAccum += ops.length / DURATION;
+      while (opAccum >= 1 && opPtr < ops.length) {
+        const op = ops[opPtr++];
+        opAccum -= 1;
+        cmpA = op.i; cmpB = op.j; cmpGlow = 1;
+        if (op.type === 'cmp') { comparisons++; }
+        else { const t = order[op.i]; order[op.i] = order[op.j]; order[op.j] = t; swaps++; }
       }
-
-      ctx.font = `9px ${MONO}`;
-      ctx.fillStyle = done ? MAGENTA : DIM;
-      ctx.fillText(done ? `${al.label} ✓` : al.label, x0 + 12, 16);
-
-      for (let i = 0; i < N; i++) {
-        disp[ci][i] += (arr[i] - disp[ci][i]) * 0.25;
-        const val = disp[ci][i];
-        const bw = Math.max(2, (val / N) * maxW);
-        const by = top + i * barH;
-        const isCmp = !done && cmp != null && (cmp[0] === i || cmp[1] === i);
-        if (isCmp) {
-          ctx.save(); ctx.shadowColor = MAGENTA; ctx.shadowBlur = 8;
-          ctx.fillStyle = MAGENTA; ctx.fillRect(x0 + 12, by, bw, Math.max(barH - 1.2, 1));
-          ctx.restore();
-        } else {
-          ctx.fillStyle = valColor((val - 1) / (N - 1), done ? 0.95 : 0.82);
-          ctx.fillRect(x0 + 12, by, bw, Math.max(barH - 1.2, 1));
-        }
+      if (opPtr >= ops.length) { phase = 'done'; phaseTimer = 0; cmpA = -1; cmpB = -1; }
+    } else if (phase === 'done') {
+      phaseTimer++;
+      if (phaseTimer > HOLD) {
+        algoIdx = (algoIdx + 1) % ALGOS.length;
+        order = makeShuffle();
+        ops = ALGOS[algoIdx].gen(order);
+        opPtr = 0; opAccum = 0; comparisons = 0; swaps = 0;
+        phase = 'shuffle'; phaseTimer = 0;
       }
+    } else {
+      phaseTimer++;
+      if (phaseTimer > SHUFFLE_SETTLE) { phase = 'sorting'; phaseTimer = 0; }
+    }
 
-      ctx.font = `8.5px ${MONO}`; ctx.fillStyle = DIM;
-      ctx.fillText(`ops ${si}`, x0 + 12, h - 10);
-    });
+    // slots may have changed after swaps
+    for (let s = 0; s < N; s++) slotOf[order[s]] = s;
+    cmpGlow *= 0.9;
 
-    frame++;
-    if (frame > DURATION + HOLD) frame = 0; // reset; lerp glides bars back to shuffled
+    // baseline axis
+    ctx.strokeStyle = 'rgba(245,166,35,0.14)'; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(padX, baseline + 0.5); ctx.lineTo(w - padX, baseline + 0.5); ctx.stroke();
+
+    const done = phase === 'done';
+    const sweepSlot = done ? Math.floor((phaseTimer / HOLD) * N) : -1;
+
+    // ── bars ──
+    for (let v = 1; v <= N; v++) {
+      const target = padX + slotOf[v] * barW + barW / 2;
+      displayX[v] += (target - displayX[v]) * 0.22;
+      const bx = displayX[v] - barW / 2 + 0.6;
+      const bw = Math.max(1.5, barW - 1.2);
+      const bh = (v / N) * maxBarH;
+      const by = baseline - bh;
+      const frac = (v - 1) / (N - 1);
+      const s = slotOf[v];
+      const isCmp = !done && (s === cmpA || s === cmpB);
+      const swept = done && s <= sweepSlot;
+
+      if (isCmp) {
+        ctx.save(); ctx.shadowColor = MAGENTA; ctx.shadowBlur = 10;
+        ctx.fillStyle = MAGENTA; ctx.fillRect(bx, by, bw, bh); ctx.restore();
+      } else if (swept) {
+        ctx.save(); ctx.shadowColor = valColor(frac); ctx.shadowBlur = 6;
+        ctx.fillStyle = valColor(frac, 1); ctx.fillRect(bx, by, bw, bh); ctx.restore();
+      } else {
+        ctx.fillStyle = valColor(frac, 0.85);
+        ctx.fillRect(bx, by, bw, bh);
+      }
+    }
+
+    // ── labels ──
+    const al = ALGOS[algoIdx];
+    ctx.font = `11px ${MONO}`;
+    ctx.fillStyle = done ? MAGENTA : AMBER;
+    ctx.fillText(done ? `${al.label}  ✓ sorted` : al.label, padX, 18);
+
+    if (phase === 'sorting') {
+      const p = `${Math.round((opPtr / ops.length) * 100)}%`;
+      ctx.font = `9px ${MONO}`; ctx.fillStyle = DIM;
+      ctx.fillText(p, w - padX - ctx.measureText(p).width, 18);
+    }
+
+    ctx.font = `9px ${MONO}`; ctx.fillStyle = DIM;
+    ctx.fillText(`comparisons ${comparisons}   swaps ${swaps}   n = ${N}`, padX, h - 9);
+
     raf = requestAnimationFrame(draw);
   };
   draw();

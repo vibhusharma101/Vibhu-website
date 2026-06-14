@@ -7,9 +7,7 @@ import s from './panels.module.css';
 const TABS: { id: MathTab; label: string }[] = [
   { id: 'waves',   label: 'WAVES'   },
   { id: 'fourier', label: 'FOURIER' },
-  { id: 'primes',  label: 'PRIMES'  },
   { id: 'sort',    label: 'SORT'    },
-  { id: 'life',    label: 'LIFE'    },
 ];
 
 export function MathVisualizer() {

@@ -4,18 +4,14 @@ import { useEffect, useRef } from 'react';
 import type { VizRunner } from './math/shared';
 import { runWaves } from './math/waves';
 import { runFourier } from './math/fourier';
-import { runPrimes } from './math/primes';
 import { runSort } from './math/sort';
-import { runLife } from './math/life';
 
-export type MathTab = 'waves' | 'fourier' | 'primes' | 'sort' | 'life';
+export type MathTab = 'waves' | 'fourier' | 'sort';
 
 const RUNNERS: Record<MathTab, VizRunner> = {
   waves: runWaves,
   fourier: runFourier,
-  primes: runPrimes,
   sort: runSort,
-  life: runLife,
 };
 
 interface Props { mode: MathTab; }
