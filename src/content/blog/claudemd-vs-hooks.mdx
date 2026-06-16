@@ -59,6 +59,10 @@ Think about how cities control driving speed.
 
 Hooks are speed bumps. They run automatically, every single time, regardless of what the AI was thinking about. They can stop the action completely.
 
+Click the tabs below to see exactly how each plays out:
+
+<ComparisonToggle />
+
 ---
 
 ## What Hooks Actually Are
@@ -159,6 +163,10 @@ When Claude tries to write a custom button, the hook fires, prints the error mes
 
 The rule that lived in the handbook and got ignored? It now lives in the road. You can't go around it.
 
+See it happen live — press ▶ RUN DEMO to watch the hook fire, block Claude, and force a correct retry:
+
+<HookTrace />
+
 ---
 
 ## Why This Matters If You're New to AI
@@ -205,40 +213,9 @@ The pattern is the same everywhere. Written rules tell people what to do. Automa
 
 ## Try It Yourself
 
-If you want to start experimenting with hooks, here are three steps that take ten minutes:
+Work through the four steps below. Each one builds on the last — start with observation, end with enforcement. Click any step to expand it, then check it off when done.
 
-**Step 1: Add visibility first (no blocking)**
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [{
-      "matcher": "Write",
-      "hooks": [{ "type": "command", "command": "echo '[HOOK] About to write a file'" }]
-    }]
-  }
-}
-```
-
-This just prints a message when Claude is about to write. No blocking. Pure observation — you see exactly when and how often Claude uses its tools.
-
-**Step 2: Log what Claude is writing**
-
-```bash
-# .claude/hooks/log-writes.sh
-#!/bin/bash
-echo "[$(date)] Claude writing file" >> .claude/activity.log
-cat - >> .claude/activity.log
-exit 0
-```
-
-This captures every file Claude writes to a local log. Start here before you start blocking — understand the traffic before you put up gates.
-
-**Step 3: Add your first real enforcement**
-
-Once you know what patterns to look for, write a script that reads stdin (the content Claude is about to write), checks for violations, and exits `1` with a helpful error message if it finds one.
-
-The error message matters — Claude reads it and uses it to correct course. Be specific: "found custom Button component, use `<Button>` from `@mantine/core` instead" is infinitely more useful than "rule violation."
+<TryItChecklist />
 
 ---
 

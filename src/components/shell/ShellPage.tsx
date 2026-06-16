@@ -6,6 +6,9 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import rehypePrettyCode from 'rehype-pretty-code';
 import remarkGfm from 'remark-gfm';
 import type { PanelId } from '@/types/panel';
+import { ComparisonToggle, HookTrace, TryItChecklist } from '@/components/blog/BlogMdxComponents';
+
+const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist };
 
 interface Props {
   initialPanel: PanelId;
@@ -24,6 +27,7 @@ export async function ShellPage({ initialPanel }: Props) {
           content: (
             <MDXRemote
               source={data.content}
+              components={mdxComponents}
               options={{
                 mdxOptions: {
                   remarkPlugins: [remarkGfm],

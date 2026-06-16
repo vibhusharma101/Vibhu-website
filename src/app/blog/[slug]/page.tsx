@@ -5,7 +5,10 @@ import rehypePrettyCode from 'rehype-pretty-code';
 import remarkGfm from 'remark-gfm';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { BlogShell } from '@/components/blog/BlogShell';
+import { ComparisonToggle, HookTrace, TryItChecklist } from '@/components/blog/BlogMdxComponents';
 import styles from './blog-post.module.css';
+
+const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist };
 
 export async function generateStaticParams() {
   return getAllPosts().map(p => ({ slug: p.slug }));
@@ -58,6 +61,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <div className={styles.prose}>
           <MDXRemote
             source={content}
+            components={mdxComponents}
             options={{
               mdxOptions: {
                 remarkPlugins: [remarkGfm],
