@@ -1,0 +1,249 @@
+---
+title: "Why Claude Kept Ignoring My Rules (And What I Did About It)"
+excerpt: "I wrote clear instructions in CLAUDE.md. My AI kept breaking them anyway. Here's the mental model that changed everything — and the fix that actually enforces your rules."
+date: "2026-06-17"
+readTime: "9 min read"
+tags: ["ai", "claude-code", "developer-tools", "beginner"]
+published: true
+---
+
+I'm building my personal website with Claude Code — an AI that writes code for me, directly in my terminal.
+
+Somewhere around day three, I get smart about it. I create a file called `CLAUDE.md`. This is a special file that Claude reads before every session — your chance to tell the AI exactly how you want it to work. I add this line:
+
+> Always use existing Mantine UI components. Never create custom components when a Mantine equivalent exists.
+
+Clear. Specific. Right at the top of the file.
+
+Twenty minutes later, Claude writes a custom `<Button>` component from scratch. Hundreds of lines. Its own styles. A completely invented wheel.
+
+I stare at the screen. The rule is *right there*. I copy it. I paste it again — in bold, in capital letters, three times. I run the command again.
+
+Claude writes another custom component.
+
+I had it completely backwards. And figuring out why taught me the most important mental model I've learned about working with AI tools.
+
+---
+
+## First, a Thought Experiment
+
+Your company has a staff handbook. Page 47 says: *"All API calls must include error handling."* It's a good rule. Everyone's read it. It was added after a painful production incident two years ago.
+
+Now imagine you're deep into a 3am debugging session. Critical bug. You need to make one quick API call to test something. You know the rule. You skip the error handling. Just this once. You'll add it back. You're exhausted.
+
+This is not negligence. This is how humans work. The rule exists in the handbook, but nothing **mechanically** prevents you from violating it.
+
+I was treating `CLAUDE.md` like a handbook.
+
+The AI reads it. Takes it seriously. But three hundred lines of context later — building something complex, solving an immediate problem — the rule from the top of the file loses its weight. Not because the AI is bad. Because that's not how reasoning systems work under pressure.
+
+The fix I needed wasn't better instructions. It was a different *kind* of instruction entirely.
+
+---
+
+## The Mental Model That Changed Everything
+
+Here's the insight, and once you have it you'll see it everywhere:
+
+> **`CLAUDE.md` is advice. Hooks are enforcement.**
+
+Let me make this concrete.
+
+Think about how cities control driving speed.
+
+**Speed limit signs** are advice. They communicate the rule clearly. Most drivers follow them. But nothing mechanically stops you from driving 100km/h in a 30km/h zone — except a cop who happens to be watching at that exact moment.
+
+**Speed bumps** are enforcement. They don't tell you the rule. They physically prevent the behavior. You *cannot* drive 100km/h over a speed bump. The constraint is baked into the road.
+
+`CLAUDE.md` is speed limit signs. Claude reads them, understands them, intends to follow them — and sometimes forgets mid-journey.
+
+Hooks are speed bumps. They run automatically, every single time, regardless of what the AI was thinking about. They can stop the action completely.
+
+---
+
+## What Hooks Actually Are
+
+In Claude Code, a hook is a shell command that runs automatically at specific moments in the AI's workflow.
+
+The AI is about to **write a file**? A hook runs first.
+The AI just **ran a command**? A hook runs after.
+The AI is about to **edit code**? A hook can examine the change before it happens.
+
+The critical part: **if the hook exits with an error, Claude stops and reconsiders.**
+
+Not "log a warning." Not "make a note." Stop. Claude sees the error output, understands what went wrong, and tries a different approach — one that passes the check.
+
+Here is what a hook configuration looks like in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/check-mantine.js"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This says: *before every single file write, run this script first.*
+
+---
+
+## The Four Hook Moments
+
+Claude Code gives you four interception points:
+
+```
+PreToolUse    → Before Claude uses any tool (read, write, run a command…)
+PostToolUse   → After a tool completes
+PreCompact    → Before Claude compresses its memory in long sessions
+Stop          → When Claude's turn ends
+```
+
+For enforcing rules like "use Mantine components," `PreToolUse` is the one. It runs *before* the file is written, so you can prevent the violation entirely.
+
+`PostToolUse` is useful for verification — checking the output after a write, making sure it meets your standards.
+
+---
+
+## My Actual Problem, Solved
+
+Here is exactly what I was dealing with on this website.
+
+**The `CLAUDE.md` rule that kept getting ignored:**
+
+```markdown
+## UI Components
+Always use Mantine components. Import from '@mantine/core'.
+Never create custom buttons, inputs, or modals.
+```
+
+**The hook that actually enforces it:**
+
+```javascript
+// .claude/hooks/check-mantine.js
+import { readFileSync } from 'fs';
+
+const input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
+const code = input?.tool_input?.content ?? '';
+
+const forbidden = [
+  /function\s+Button\s*\(/,
+  /const\s+Button\s*=\s*\(/,
+  /<button\s+className/,
+];
+
+const violation = forbidden.find(p => p.test(code));
+
+if (violation) {
+  console.error(`
+[HOOK] Mantine rule violated.
+You're creating a custom button component.
+Use <Button> from '@mantine/core' instead.
+  `);
+  process.exit(1);
+}
+
+process.exit(0);
+```
+
+When Claude tries to write a custom button, the hook fires, prints the error message, and exits with code `1`. Claude reads the error, understands what it did wrong, and tries again — this time reaching for the Mantine import.
+
+The rule that lived in the handbook and got ignored? It now lives in the road. You can't go around it.
+
+---
+
+## Why This Matters If You're New to AI
+
+If you're just starting out with AI coding tools, here's the most important thing to understand:
+
+**AI assistants are not obedient executors. They are reasoning engines.**
+
+They take your instructions as input, weigh them against everything in their context — the immediate problem, the code they're looking at, the error message from three steps ago — and make a judgment call. They're usually right. But rules that feel non-negotiable to you can lose priority against the concrete, salient, right-in-front-of-them problem they're solving.
+
+This is not a flaw. It's what makes them powerful. But it means you can't rely on instructions alone for rules that genuinely must not be broken.
+
+Here's the three-layer model I now use:
+
+| Layer | Tool | What It Does | Enforced? |
+|-------|------|-------------|-----------|
+| 1 | `CLAUDE.md` | Tells the AI about your project and preferences | No — advisory |
+| 2 | Hooks | Gates that block violations before they happen | Yes — automatic |
+| 3 | Tests & CI | Verifies the final output is correct | Yes — blocking |
+
+Use `CLAUDE.md` for *orientation* — your tech stack, your style guide, your preferences. Claude genuinely uses this.
+
+Use hooks for *constraints* — rules that cannot be violated, ever, full stop.
+
+Use tests for *verification* — proof that the output is actually correct.
+
+---
+
+## The Deeper Pattern
+
+I spent three days frustrated by what felt like "the AI isn't listening." But once I found the real model, I realized I'd been asking the AI to enforce its own constraints — which is like writing "don't forget" on a sticky note and trusting the sticky note to remind you.
+
+The rule needs to live somewhere with **mechanical authority** over the process, not just advisory presence in the context.
+
+For Claude Code: hooks.
+
+For your codebase: linters, type checkers, pre-commit hooks.
+
+For your team: automated gates, not just documented guidelines.
+
+The pattern is the same everywhere. Written rules tell people what to do. Automated checks ensure they actually did it. Both together is where the magic is.
+
+---
+
+## Try It Yourself
+
+If you want to start experimenting with hooks, here are three steps that take ten minutes:
+
+**Step 1: Add visibility first (no blocking)**
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Write",
+      "hooks": [{ "type": "command", "command": "echo '[HOOK] About to write a file'" }]
+    }]
+  }
+}
+```
+
+This just prints a message when Claude is about to write. No blocking. Pure observation — you see exactly when and how often Claude uses its tools.
+
+**Step 2: Log what Claude is writing**
+
+```bash
+# .claude/hooks/log-writes.sh
+#!/bin/bash
+echo "[$(date)] Claude writing file" >> .claude/activity.log
+cat - >> .claude/activity.log
+exit 0
+```
+
+This captures every file Claude writes to a local log. Start here before you start blocking — understand the traffic before you put up gates.
+
+**Step 3: Add your first real enforcement**
+
+Once you know what patterns to look for, write a script that reads stdin (the content Claude is about to write), checks for violations, and exits `1` with a helpful error message if it finds one.
+
+The error message matters — Claude reads it and uses it to correct course. Be specific: "found custom Button component, use `<Button>` from `@mantine/core` instead" is infinitely more useful than "rule violation."
+
+---
+
+The gap between "I told the AI to do X" and "the AI will always do X" is where most frustration with AI tools lives.
+
+`CLAUDE.md` opens the conversation. Hooks end it.
+
+Write the rules. Then build the speed bumps.
