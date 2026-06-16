@@ -513,3 +513,236 @@ export function TryItChecklist() {
     </div>
   );
 }
+
+
+/* ─────────────────────────────────────────────────────────
+   4. LayerModel — three-layer defence-in-depth diagram
+───────────────────────────────────────────────────────── */
+
+const LAYERS = [
+  {
+    num: '01',
+    tool: 'CLAUDE.md',
+    tagline: 'Context & orientation',
+    what: 'Tells the AI about your project, stack, and style preferences.',
+    badge: 'ADVISORY',
+    accent: 'var(--color-amber)',
+    accentSoft: 'rgba(217,119,6,0.08)',
+    borderStyle: 'dashed' as const,
+    use: 'Your tech stack, naming conventions, style guide, tone. Claude genuinely reads and uses this as context — it shapes how it thinks about your project.',
+    icon: '📋',
+    enforcedLabel: 'No',
+    enforcedSub: 'Claude may deprioritize rules under deep context',
+  },
+  {
+    num: '02',
+    tool: 'Hooks',
+    tagline: 'Mechanical enforcement',
+    what: 'Shell commands that fire before/after every tool use.',
+    badge: 'ENFORCED',
+    accent: 'var(--color-magenta)',
+    accentSoft: 'rgba(255,20,99,0.07)',
+    borderStyle: 'solid' as const,
+    use: 'Rules that must never be broken. Exit code 1 blocks Claude entirely — it reads your error message and retries correctly.',
+    icon: '⚡',
+    enforcedLabel: 'Yes',
+    enforcedSub: 'Fires automatically on every tool call, no exceptions',
+  },
+  {
+    num: '03',
+    tool: 'Tests & CI',
+    tagline: 'Final verification gate',
+    what: 'Proves the output is correct, not just rule-compliant.',
+    badge: 'BLOCKING',
+    accent: '#7ec87e',
+    accentSoft: 'rgba(126,200,126,0.07)',
+    borderStyle: 'solid' as const,
+    use: 'Catch logic errors, regressions, and anything that slipped through the layers above. Build fails = nothing ships.',
+    icon: '🧪',
+    enforcedLabel: 'Yes',
+    enforcedSub: 'Hard gate — failing tests block the entire deploy',
+  },
+];
+
+export function LayerModel() {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  return (
+    <div style={{ margin: '32px 0', fontFamily: 'var(--font-mono)' }}>
+      {LAYERS.map((layer, i) => {
+        const isOpen = expanded === i;
+        return (
+          <div key={layer.num}>
+            {/* ── Layer card ── */}
+            <div
+              onClick={() => setExpanded(isOpen ? null : i)}
+              style={{
+                borderLeft: `3px ${layer.borderStyle} ${layer.accent}`,
+                border: `1px solid var(--color-amber-deep)`,
+                borderLeftWidth: 3,
+                borderLeftStyle: layer.borderStyle,
+                borderLeftColor: layer.accent,
+                background: isOpen ? layer.accentSoft : 'var(--color-bg2)',
+                cursor: 'pointer',
+                transition: 'background 0.18s',
+              }}
+            >
+              {/* Header row */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '56px 1fr auto',
+                alignItems: 'center',
+                padding: '18px 20px',
+                gap: 16,
+              }}>
+                {/* Layer number */}
+                <div style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: layer.accent,
+                  lineHeight: 1,
+                  opacity: 0.7,
+                  letterSpacing: '-0.03em',
+                }}>
+                  {layer.num}
+                </div>
+
+                {/* Tool name + description */}
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 4,
+                  }}>
+                    <span style={{ fontSize: 14 }}>{layer.icon}</span>
+                    <span style={{
+                      fontFamily: 'var(--font-serif)',
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: layer.accent,
+                      letterSpacing: '-0.01em',
+                    }}>
+                      {layer.tool}
+                    </span>
+                    <span style={{
+                      fontSize: 9,
+                      color: 'var(--color-amber-dim)',
+                      letterSpacing: '0.12em',
+                      borderLeft: '1px solid var(--color-amber-deep)',
+                      paddingLeft: 8,
+                      textTransform: 'uppercase',
+                    }}>
+                      {layer.tagline}
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: 12,
+                    color: 'var(--color-amber-dim)',
+                    margin: 0,
+                    lineHeight: 1.5,
+                  }}>
+                    {layer.what}
+                  </p>
+                </div>
+
+                {/* Badge + toggle */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: layer.badge === 'ADVISORY' ? 'var(--color-amber-dim)' : layer.accent,
+                    border: `1px solid ${layer.badge === 'ADVISORY' ? 'var(--color-amber-deep)' : layer.accent}`,
+                    padding: '3px 8px',
+                  }}>
+                    {layer.badge}
+                  </span>
+                  <span style={{ color: 'var(--color-amber-dim)', fontSize: 10 }}>
+                    {isOpen ? '▲' : '▼'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Expanded detail */}
+              {isOpen && (
+                <div style={{
+                  borderTop: `1px dashed var(--color-amber-deep)`,
+                  padding: '16px 20px 18px 88px',
+                }}>
+                  {/* Enforced status */}
+                  <div style={{
+                    display: 'flex',
+                    gap: 16,
+                    marginBottom: 14,
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>
+                        Enforced
+                      </div>
+                      <div style={{ fontSize: 12, color: layer.accent, fontWeight: 700 }}>
+                        {layer.enforcedLabel}
+                      </div>
+                    </div>
+                    <div style={{ borderLeft: '1px solid var(--color-amber-deep)', paddingLeft: 16, flex: 1 }}>
+                      <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>
+                        How it works
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.5 }}>
+                        {layer.enforcedSub}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Use this for */}
+                  <div style={{
+                    background: 'var(--color-bg)',
+                    border: '1px solid var(--color-amber-deep)',
+                    padding: '12px 14px',
+                  }}>
+                    <span style={{ fontSize: 9, color: layer.accent, letterSpacing: '0.16em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                      → Use this for
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--color-amber-text)', lineHeight: 1.6 }}>
+                      {layer.use}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Connector between layers ── */}
+            {i < LAYERS.length - 1 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '6px 20px',
+                borderLeft: '3px solid transparent',
+              }}>
+                <div style={{
+                  width: 1,
+                  height: 28,
+                  background: 'var(--color-amber-deep)',
+                  marginLeft: 26,
+                  flexShrink: 0,
+                }} />
+                <span style={{
+                  fontSize: 10,
+                  color: 'var(--color-amber-dim)',
+                  letterSpacing: '0.06em',
+                  fontStyle: 'italic',
+                }}>
+                  {i === 0
+                    ? 'rules not enforced here may slip through ↓'
+                    : 'code that passes hooks gets verified by ↓'}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

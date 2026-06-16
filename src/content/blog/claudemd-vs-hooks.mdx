@@ -179,19 +179,9 @@ They take your instructions as input, weigh them against everything in their con
 
 This is not a flaw. It's what makes them powerful. But it means you can't rely on instructions alone for rules that genuinely must not be broken.
 
-Here's the three-layer model I now use:
+Here's the three-layer model I now use. Click any layer to expand it:
 
-| Layer | Tool | What It Does | Enforced? |
-|-------|------|-------------|-----------|
-| 1 | `CLAUDE.md` | Tells the AI about your project and preferences | No — advisory |
-| 2 | Hooks | Gates that block violations before they happen | Yes — automatic |
-| 3 | Tests & CI | Verifies the final output is correct | Yes — blocking |
-
-Use `CLAUDE.md` for *orientation* — your tech stack, your style guide, your preferences. Claude genuinely uses this.
-
-Use hooks for *constraints* — rules that cannot be violated, ever, full stop.
-
-Use tests for *verification* — proof that the output is actually correct.
+<LayerModel />
 
 ---
 

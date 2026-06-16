@@ -5,10 +5,10 @@ import rehypePrettyCode from 'rehype-pretty-code';
 import remarkGfm from 'remark-gfm';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { BlogShell } from '@/components/blog/BlogShell';
-import { ComparisonToggle, HookTrace, TryItChecklist } from '@/components/blog/BlogMdxComponents';
+import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel } from '@/components/blog/BlogMdxComponents';
 import styles from './blog-post.module.css';
 
-const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist };
+const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel };
 
 export async function generateStaticParams() {
   return getAllPosts().map(p => ({ slug: p.slug }));
