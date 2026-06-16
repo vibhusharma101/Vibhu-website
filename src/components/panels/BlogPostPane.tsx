@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import type { BlogPost } from '@/types/blog';
 import styles from '@/app/blog/[slug]/blog-post.module.css';
 import s from '@/components/shell/shell.module.css';
@@ -25,6 +26,27 @@ export function BlogPostPane({ post, content, otherPosts, onBack, onSelectPost }
 
       {/* ── Article ── */}
       <div ref={scrollRef} className={styles.article}>
+        {/* Cover image */}
+        {post.cover && (
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: 260,
+            overflow: 'hidden',
+            marginBottom: 32,
+            borderBottom: '1px solid var(--color-amber-deep)',
+          }}>
+            <Image
+              src={post.cover}
+              alt={post.title}
+              fill
+              style={{ objectFit: 'cover' }}
+              sizes="(max-width: 1024px) 100vw, 70vw"
+              priority
+            />
+          </div>
+        )}
+
         {/* Back + meta row */}
         <div className={styles.postMeta}>
           <button

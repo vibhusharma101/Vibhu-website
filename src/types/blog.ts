@@ -6,4 +6,5 @@ export interface BlogPost {
   readTime: string;
   tags: string[];
   published: boolean;
+  cover?: string;
 }

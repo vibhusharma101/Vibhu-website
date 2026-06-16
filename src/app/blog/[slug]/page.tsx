@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import rehypePrettyCode from 'rehype-pretty-code';
 import remarkGfm from 'remark-gfm';
@@ -43,6 +44,26 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       statusLine={`Markdown · ${meta.readTime} · ${meta.date}`}
     >
       <div className={styles.article}>
+        {meta.cover && (
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: 280,
+            overflow: 'hidden',
+            marginBottom: 32,
+            borderBottom: '1px solid var(--color-amber-deep)',
+          }}>
+            <Image
+              src={meta.cover}
+              alt={meta.title}
+              fill
+              style={{ objectFit: 'cover' }}
+              sizes="(max-width: 1024px) 100vw, 70vw"
+              priority
+            />
+          </div>
+        )}
+
         <div className={styles.postMeta}>
           <time>{meta.date}</time>
           <span>·</span>
