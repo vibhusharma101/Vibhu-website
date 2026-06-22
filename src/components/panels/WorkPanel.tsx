@@ -2,8 +2,8 @@ import type { WorkExEntry } from '@/data/workex';
 import s from './panels.module.css';
 
 const OUTCOMES: Record<string, { num: string; label: string; badge?: string }> = {
-  'powerplay-2025': { num: '·',     label: 'ongoing',    badge: 'ACTIVE' },
-  'vignam':         { num: '$1M',   label: 'valuation' },
+  'powerplay-2025': { num: '5',     label: 'AI agents',  badge: 'ACTIVE' },
+  'vignam':         { num: '20+',   label: 'team built' },
   'powerplay-2020': { num: '500k+', label: 'users' },
   'trucks24':       { num: '0→1',   label: 'solo build' },
 };

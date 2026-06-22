@@ -2,23 +2,23 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Vibhanshu Sharma — Tech Generalist, 2x Founder',
+  title: 'Vibhanshu Sharma — AI Engineer & Founder',
   description:
-    'IIT Roorkee Gold Medalist. Built Powerplay Android to 500k+ users as founding engineer. Founded Vignam ($1M valuation, 20+ team). Currently leading AI engineering at Powerplay.',
-  keywords: ['Vibhanshu Sharma', 'founder', 'engineer', 'IIT Roorkee', 'Powerplay', 'Vignam', 'full-stack'],
+    'Vibhanshu Sharma is an AI engineer and founder in Bengaluru. He ships production AI — agents, RAG, and LLM products — including India\'s first AI workforce for construction at Powerplay.',
+  keywords: ['Vibhanshu Sharma', 'AI engineer', 'AI agents', 'RAG', 'LLM', 'generative AI', 'founder', 'full-stack engineer', 'Powerplay', 'IIT Roorkee', 'Bengaluru'],
   authors: [{ name: 'Vibhanshu Sharma' }],
   openGraph: {
-    title: 'Vibhanshu Sharma — Tech Generalist, 2x Founder',
+    title: 'Vibhanshu Sharma — AI Engineer & Founder',
     description:
-      'IIT Roorkee Gold Medalist. Founding engineer at Powerplay (500k+ users). Solo founder of Vignam ($1M valuation). Building at the intersection of AI and product.',
+      'I build AI-native products end-to-end — production agents, RAG pipelines, and the full stack that ships them. Currently building India\'s first AI workforce for construction at Powerplay.',
     type: 'website',
     locale: 'en_IN',
     url: 'https://vibhanshu.dev',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vibhanshu Sharma — Tech Generalist, 2x Founder',
-    description: 'IIT Roorkee Gold Medalist. 2x founder. Currently leading AI engineering at Powerplay.',
+    title: 'Vibhanshu Sharma — AI Engineer & Founder',
+    description: 'AI engineer and founder, shipping production AI — agents, RAG, and the products around them.',
   },
   robots: { index: true, follow: true },
   icons: {

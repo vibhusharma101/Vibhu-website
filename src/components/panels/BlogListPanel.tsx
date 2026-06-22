@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { BlogPost } from '@/types/blog';
 import s from './panels.module.css';
 
@@ -43,18 +42,6 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
           className={s.blogFeatured}
           onClick={() => onSelectPost(featured.slug)}
         >
-          {featured.cover && (
-            <div className={s.blogFeaturedThumb}>
-              <Image
-                src={featured.cover}
-                alt={featured.title}
-                fill
-                style={{ objectFit: 'cover' }}
-                sizes="(max-width: 1024px) 100vw, 60vw"
-                priority
-              />
-            </div>
-          )}
           <span className={s.blogFeaturedLabel}>LATEST POST</span>
           <h2 className={s.blogFeaturedTitle}>{featured.title}</h2>
           <p className={s.blogFeaturedExcerpt}>{featured.excerpt}</p>

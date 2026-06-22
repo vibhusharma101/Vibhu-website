@@ -79,7 +79,7 @@ export function ComparisonToggle() {
       </div>
 
       {/* Step list */}
-      <div style={{ padding: '24px 28px', minHeight: 180 }}>
+      <div style={{ padding: 'clamp(14px, 4vw, 24px) clamp(14px, 4vw, 28px)', minHeight: 180 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {steps.map((step, i) => (
             <div
@@ -269,7 +269,7 @@ export function HookTrace() {
 
       {/* Trace output */}
       <div style={{
-        padding: '16px 20px',
+        padding: 'clamp(12px, 3vw, 16px) clamp(12px, 3vw, 20px)',
         minHeight: 220,
         maxHeight: 320,
         overflowY: 'auto',
@@ -397,7 +397,7 @@ export function TryItChecklist() {
         alignItems: 'center',
       }}>
         <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-          // try it yourself
+          {'// try it yourself'}
         </span>
         <span style={{ fontSize: 10, color: allDone ? '#7ec87e' : 'var(--color-amber-dim)' }}>
           {checked.size}/{CHECKLIST_STEPS.length} done
@@ -467,7 +467,7 @@ export function TryItChecklist() {
               {/* Expanded detail */}
               {isOpen && (
                 <div style={{
-                  padding: '0 18px 16px 50px',
+                  padding: '0 clamp(12px, 3vw, 18px) 16px clamp(16px, 5vw, 50px)',
                   background: 'var(--color-bg2)',
                   borderTop: '1px dashed var(--color-amber-deep)',
                 }}>
@@ -589,37 +589,39 @@ export function LayerModel() {
             >
               {/* Header row */}
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '56px 1fr auto',
+                display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
-                padding: '18px 20px',
-                gap: 16,
+                padding: 'clamp(12px, 3vw, 18px) clamp(12px, 3vw, 20px)',
+                gap: 'clamp(8px, 2vw, 16px)',
               }}>
                 {/* Layer number */}
                 <div style={{
                   fontFamily: 'var(--font-serif)',
-                  fontSize: 32,
+                  fontSize: 'clamp(24px, 5vw, 32px)',
                   fontWeight: 700,
                   color: layer.accent,
                   lineHeight: 1,
                   opacity: 0.7,
                   letterSpacing: '-0.03em',
+                  flexShrink: 0,
                 }}>
                   {layer.num}
                 </div>
 
                 {/* Tool name + description */}
-                <div>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
                     marginBottom: 4,
+                    flexWrap: 'wrap',
                   }}>
                     <span style={{ fontSize: 14 }}>{layer.icon}</span>
                     <span style={{
                       fontFamily: 'var(--font-serif)',
-                      fontSize: 18,
+                      fontSize: 'clamp(15px, 3vw, 18px)',
                       fontWeight: 700,
                       color: layer.accent,
                       letterSpacing: '-0.01em',
@@ -648,7 +650,7 @@ export function LayerModel() {
                 </div>
 
                 {/* Badge + toggle */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   <span style={{
                     fontSize: 9,
                     fontWeight: 700,
@@ -669,13 +671,14 @@ export function LayerModel() {
               {isOpen && (
                 <div style={{
                   borderTop: `1px dashed var(--color-amber-deep)`,
-                  padding: '16px 20px 18px 88px',
+                  padding: 'clamp(12px, 3vw, 16px) clamp(12px, 3vw, 20px) clamp(14px, 3vw, 18px)',
                 }}>
                   {/* Enforced status */}
                   <div style={{
                     display: 'flex',
                     gap: 16,
                     marginBottom: 14,
+                    flexWrap: 'wrap',
                   }}>
                     <div>
                       <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>
