@@ -130,6 +130,17 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             <span>📁</span><span>blog</span>
           </button>
 
+          {blogOpen && posts.map(post => (
+            <SidebarFile
+              key={`blog-${post.slug}`}
+              filename={`${post.slug}.mdx`}
+              lang="md"
+              active={activePanel === 'blog' && selectedBlogSlug === post.slug}
+              indent={2}
+              onClick={() => { setActivePanel('blog'); setSelectedBlogSlug(post.slug); setSidebarOpen(false); }}
+            />
+          ))}
+
         </div>
 
         <div className={s.sidebarBottom}>
@@ -221,7 +232,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
                       onBack={() => setSelectedBlogSlug(null)}
                       onSelectPost={setSelectedBlogSlug}
                     />
-                  : <BlogListPanel />
+                  : <BlogListPanel posts={posts} onSelectPost={setSelectedBlogSlug} />
               )}
             </div>
           ))}

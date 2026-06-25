@@ -21,10 +21,10 @@ export function HomePanel({ onNavigate }: Props) {
           <br />
           <span className={s.bootPrompt}>→ </span>
           <span className={s.bootOk}>✓ </span>
-          <span className={s.bootValue}>2x_founder · iitr_gold_medalist · tech_generalist</span>
+          <span className={s.bootValue}>ai engineer · 2x founder · ships production AI</span>
           <br />
           <span className={s.bootPrompt}>→ </span>
-          <span className={s.bootValue}>currently: AI automation @ powerplay · bengaluru</span>
+          <span className={s.bootValue}>currently: founding team @ powerplay</span>
         </div>
 
         <h1 className={s.heroName}>
@@ -33,8 +33,8 @@ export function HomePanel({ onNavigate }: Props) {
         </h1>
 
         <p className={s.tagline}>
-          <b>Tech generalist. Two-time founder. IIT Roorkee gold medalist.</b>{' '}
-          Three companies from zero — <em>no template, no vapor.</em>
+          <b>I build AI-native products end-to-end — the agents and LLM pipelines, and the full stack that ships them.</b>{' '}
+          Three products taken from a blank repo to real users. <em>No templates, no vapor.</em>
         </p>
 
         <div className={s.statsBar} role="list">

@@ -15,18 +15,18 @@ export const workex: WorkExEntry[] = [
   {
     id: 'powerplay-2025',
     company: 'Powerplay',
-    role: 'Founding Team Member — Engineering & AI',
+    role: 'Founding Team — AI & Engineering',
     period: 'Oct 2025 – Present',
     duration: '8 months',
     location: 'Bengaluru, India',
     type: 'engineer',
     current: true,
     bullets: [
-      'Rejoined as Tech Generalist — working across backend, frontend, iOS, and Android.',
-      'Leading AI automation initiatives, positioning Powerplay as an AI-native construction platform.',
-      'Part of a team that launched India\'s first AI Workforce for Construction, serving 40,000+ contractors.',
+      'Lead AI engineering — shipped India\'s first AI workforce for construction: 5 production AI agents serving 40,000+ contractors.',
+      'Building the agent platform end-to-end — estimation, procurement, and project-execution agents that cut weeks of manual work to minutes.',
+      'Work across the full stack (backend, frontend, iOS, Android) to put production AI directly in users\' hands.',
     ],
-    skills: ['AI Agents', 'Full-Stack', 'React', 'Node.js', 'iOS', 'Android'],
+    skills: ['AI Agents', 'LLMs', 'RAG', 'Full-Stack', 'React', 'Node.js'],
   },
   {
     id: 'vignam',
@@ -37,7 +37,7 @@ export const workex: WorkExEntry[] = [
     location: 'Delhi, India',
     type: 'founder',
     bullets: [
-      'Solo founder — scaled to a $1M valuation and a 20+ member team from zero.',
+      'Founded solo and built the team from zero to 20+ across engineering, design, and growth.',
       'Built an AI-powered 3D interactive education platform using Three.js and Unity; cut TTI by 50% and bundle size by 30%.',
       'Engineered a WebRTC/Node.js live video platform handling 200+ concurrent users at <200ms latency.',
       'Built a RAG search API using LLMs and vector databases for 3D simulation recommendations.',

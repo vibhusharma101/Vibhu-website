@@ -7,10 +7,10 @@ const EQUATIONS = [
 ];
 
 const STATS = [
-  { k: 'users',     v: '500,000+' },
-  { k: 'valuation', v: '$1,000,000' },
-  { k: 'uptime',    v: '99.98%' },
-  { k: 'engineers', v: '20+' },
+  { k: 'ai agents',  v: '5 live' },
+  { k: 'est. time',  v: '−95%' },
+  { k: 'users',      v: '500,000+' },
+  { k: 'uptime',     v: '99.98%' },
 ];
 
 /** Animated, mouse-interactive sine waves — the original hero visual. */
