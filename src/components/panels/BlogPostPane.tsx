@@ -25,7 +25,6 @@ export function BlogPostPane({ post, content, otherPosts, onBack, onSelectPost }
 
       {/* ── Article ── */}
       <div ref={scrollRef} className={styles.article}>
-        {/* Back + meta row */}
         <div className={styles.postMeta}>
           <button
             onClick={onBack}

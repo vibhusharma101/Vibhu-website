@@ -10,7 +10,7 @@ export function ProjectsPanel({ projects }: Props) {
     <div className={s.panelBody}>
       <p className={s.codeComment}>projects.ts — selected work</p>
       <p className={s.codeComment} style={{ marginBottom: 36 }}>
-        {projects.length} entries · click any card to view source ↗
+        {projects.length} {projects.length === 1 ? 'entry' : 'entries'}
       </p>
 
       <div className={s.projGrid}>
@@ -33,6 +33,30 @@ export function ProjectsPanel({ projects }: Props) {
                   <span key={tech} className={s.stackBadge}>{tech}</span>
                 ))}
               </div>
+              {(proj.githubUrl || proj.liveUrl) && (
+                <div className={s.cardLinks}>
+                  {proj.githubUrl && (
+                    <a
+                      href={proj.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={s.cardLink}
+                    >
+                      ↗ GitHub
+                    </a>
+                  )}
+                  {proj.liveUrl && (
+                    <a
+                      href={proj.liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={s.cardLink}
+                    >
+                      ↗ Website
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </article>
         ))}

@@ -298,3 +298,24 @@
   letter-spacing: 0.1em;
   font-size: 10.5px;
 }
+
+/* ── Tablet (≤1024px) ── */
+@media (max-width: 1024px) {
+  .article { padding: 36px 36px 80px; }
+  .prose h2 { font-size: 21px; margin: 32px 0 14px; }
+  .prose h3 { font-size: 16px; margin: 24px 0 10px; }
+}
+
+/* ── Mobile (≤640px) ── */
+@media (max-width: 640px) {
+  .article { padding: 24px 16px 60px; }
+  .postTitle { text-shadow: 1px 1px 0 var(--color-amber-deep); }
+  .postExcerpt { font-size: 15px; margin-bottom: 20px; }
+  .prose { font-size: 15px; }
+  .prose h2 { font-size: 19px; margin: 28px 0 12px; }
+  .prose h3 { font-size: 15px; }
+  .prose pre { padding: 14px 12px; font-size: 11.5px; margin: 18px -4px; }
+  .prose blockquote { padding-left: 14px; margin: 18px 0; }
+  .prose ul, .prose ol { margin-left: 16px; }
+  .backLink { margin-top: 40px; }
+}

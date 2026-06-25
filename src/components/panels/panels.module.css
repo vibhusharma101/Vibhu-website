@@ -51,6 +51,7 @@
   padding: 36px 40px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 14px;
   text-decoration: none;
   border-right: 1px solid var(--color-amber-deep);
@@ -85,7 +86,6 @@
   font-size: 13.5px;
   color: var(--color-amber-dim);
   line-height: 1.75;
-  flex: 1;
   font-family: var(--font-serif);
   font-style: italic;
 }
@@ -656,6 +656,27 @@
   letter-spacing: 0.04em;
 }
 
+.cardLinks {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-amber-deep);
+}
+
+.cardLink {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--color-magenta);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.15s;
+}
+
+.cardLink:hover {
+  color: var(--color-amber);
+}
+
 /* ── About panel ── */
 .aboutGrid {
   display: grid;
@@ -886,8 +907,13 @@
 @media (max-width: 640px) {
   /* Hero */
   .heroLayout { overflow-y: auto; }
-  .heroBody { padding: 24px 20px 80px; overflow: visible; justify-content: flex-start; }
-  .heroRight { display: none; }
+  .heroBody { padding: 24px 20px 28px; overflow: visible; justify-content: flex-start; }
+  .heroRight {
+    height: 220px;
+    min-height: 220px;
+    flex: none;
+    border-top: 1px solid var(--color-amber-deep);
+  }
   .heroName { margin-bottom: 16px; }
   .tagline { font-size: 14px; margin-bottom: 18px; }
   .statsBar { flex-wrap: wrap; max-width: 100%; margin-bottom: 20px; }

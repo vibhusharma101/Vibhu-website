@@ -10,18 +10,21 @@ export function AboutPanel() {
       <div className={s.aboutGrid}>
         <div>
           <p className={s.bioText}>
-            I grew up wanting to build things end-to-end. B.Tech in Production &amp; Industrial
-            Engineering at IIT Roorkee — GPA 9.007, department gold medalist. Started shipping
-            production software in college and never stopped.
+            I&apos;m an AI engineer who likes owning the whole product — the agents and LLM
+            pipelines, and the full stack around them: backend, frontend, mobile. I studied
+            Production &amp; Industrial Engineering at IIT Roorkee, graduated top of my
+            department, and started shipping production software in college. I never really stopped.
           </p>
           <p className={s.bioText}>
-            Three companies in, the pattern is the same:{' '}
-            <em>find the wedge, ship the first version, listen, iterate hard.</em>{' '}
-            Right now that pattern is pointed at AI automation in construction tech.
+            These days my work is AI-first. At Powerplay I&apos;m building India&apos;s first AI
+            workforce for construction — a set of production AI agents that turn weeks of
+            estimation and procurement into minutes. Before that I built a RAG-powered learning
+            platform from scratch. The approach hasn&apos;t changed:{' '}
+            <em>find the real problem, ship a first version fast, listen, then iterate hard.</em>
           </p>
           <p className={s.bioText}>
-            I write occasionally about founder-mode engineering, AI products, and the
-            unfashionable parts of building real software.
+            I also write — about building with AI agents, engineering in founder mode, and the
+            unglamorous parts of shipping real software that lasts.
           </p>
         </div>
 
