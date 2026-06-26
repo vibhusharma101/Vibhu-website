@@ -553,6 +553,139 @@
   box-shadow: 0 0 7px var(--color-magenta-soft);
 }
 
+/* ── Work entry dialog ── */
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialog {
+  background: var(--color-bg);
+  border: 1px solid var(--color-amber-deep);
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+
+.dialogTitlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--color-bg2);
+  border-bottom: 1px solid var(--color-amber-deep);
+  flex-shrink: 0;
+}
+
+.dialogTitleLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-amber-dim);
+}
+
+.dialogFile { color: var(--color-amber-dim); }
+.dialogSep  { color: var(--color-amber-deep); }
+.dialogEntry { color: var(--color-amber-text); }
+
+.dialogClose {
+  background: none;
+  border: none;
+  color: var(--color-amber-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  transition: color 0.15s;
+}
+.dialogClose:hover { color: var(--color-magenta); }
+
+.dialogBody {
+  padding: 28px 32px 32px;
+  overflow-y: auto;
+}
+.dialogBody::-webkit-scrollbar { width: 3px; }
+.dialogBody::-webkit-scrollbar-thumb { background: var(--color-amber-deep); }
+
+.dialogMeta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--color-amber-dim);
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+.dialogCompany {
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 700;
+  color: var(--color-amber);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.dialogRole {
+  font-size: 10px;
+  color: var(--color-amber-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  margin-bottom: 24px;
+}
+
+.dialogBullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dialogBullet {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--color-amber-text);
+  line-height: 1.6;
+}
+
+.dialogBulletDot {
+  color: var(--color-magenta);
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 10px;
+}
+
+.dialogSkills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--color-amber-deep);
+}
+
+.dialogSkillBadge {
+  font-size: 10px;
+  color: var(--color-amber-dim);
+  border: 1px solid var(--color-amber-deep);
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+}
+
 /* ── Projects panel ── */
 .projGrid {
   display: grid;
@@ -737,7 +870,24 @@
 
 .contactPanelItem:last-child { border-bottom: 0; }
 .contactPanelItem:hover { background: var(--color-amber-sub); }
-.contactPanelItem:hover a { color: var(--color-magenta); }
+.contactPanelItem:hover .contactPanelLink { color: var(--color-magenta); }
+.contactPanelItem:hover .contactArrow { opacity: 1; }
+
+.contactPanelLink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.contactArrow {
+  opacity: 0;
+  margin-left: 4px;
+  font-size: 10px;
+  transition: opacity 0.1s;
+}
 
 .contactKey {
   color: var(--color-amber-dim);
@@ -746,7 +896,11 @@
   text-transform: uppercase;
 }
 
-.contactVal { color: var(--color-amber-text); }
+.contactVal {
+  color: var(--color-amber-text);
+  display: flex;
+  align-items: center;
+}
 
 /* ── Contact panel (full tab) ── */
 .contactBody {
