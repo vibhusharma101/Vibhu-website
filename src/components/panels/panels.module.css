@@ -870,7 +870,24 @@
 
 .contactPanelItem:last-child { border-bottom: 0; }
 .contactPanelItem:hover { background: var(--color-amber-sub); }
-.contactPanelItem:hover a { color: var(--color-magenta); }
+.contactPanelItem:hover .contactPanelLink { color: var(--color-magenta); }
+.contactPanelItem:hover .contactArrow { opacity: 1; }
+
+.contactPanelLink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.contactArrow {
+  opacity: 0;
+  margin-left: 4px;
+  font-size: 10px;
+  transition: opacity 0.1s;
+}
 
 .contactKey {
   color: var(--color-amber-dim);
@@ -879,7 +896,11 @@
   text-transform: uppercase;
 }
 
-.contactVal { color: var(--color-amber-text); }
+.contactVal {
+  color: var(--color-amber-text);
+  display: flex;
+  align-items: center;
+}
 
 /* ── Contact panel (full tab) ── */
 .contactBody {
