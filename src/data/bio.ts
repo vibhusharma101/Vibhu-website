@@ -8,6 +8,7 @@ export const bio = {
   twitter: 'https://twitter.com/vibhusharma',
   tagline: 'AI engineer and 2x founder, shipping production AI — agents, RAG, and the products around them.',
   currentRole: 'Founding Team · AI & Engineering @ Powerplay',
+  awards: ['Selected: Entrepreneur First Summer Cohort 2025', 'IIT Roorkee Department Gold Medalist'],
   stats: {
     usersReached: '500k+',
     companiesFounded: '2',
