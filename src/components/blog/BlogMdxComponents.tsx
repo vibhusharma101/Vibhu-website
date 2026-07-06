@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 /* ─────────────────────────────────────────────────────────
    1. ComparisonToggle — CLAUDE.md (handbook) vs Hooks (gate)
@@ -563,6 +563,559 @@ const LAYERS = [
     enforcedSub: 'Hard gate — failing tests block the entire deploy',
   },
 ];
+
+/* ─────────────────────────────────────────────────────────
+   5. MidpointProof — step-by-step algebraic derivation
+───────────────────────────────────────────────────────── */
+
+const PROOF_STEPS = [
+  {
+    eq: 'low + (high − low) / 2',
+    label: 'Safe formula (starting point)',
+    note: 'This is what production code uses. We want to prove it equals the standard (low + high) / 2.',
+    highlight: false,
+  },
+  {
+    eq: '= (2·low) / 2  +  (high − low) / 2',
+    label: 'Find a common denominator',
+    note: 'Rewrite "low" as "2·low / 2" so both terms share denominator 2.',
+    highlight: false,
+  },
+  {
+    eq: '= (2·low + high − low) / 2',
+    label: 'Combine the fractions',
+    note: 'Both fractions share the same denominator — merge them into one.',
+    highlight: false,
+  },
+  {
+    eq: '= (low + high) / 2  ✓',
+    label: 'Simplify',
+    note: '2·low − low = low. This is exactly the standard formula — just computed safely.',
+    highlight: true,
+  },
+];
+
+export function MidpointProof() {
+  const [shown, setShown] = useState(1);
+  const allDone = shown >= PROOF_STEPS.length;
+
+  return (
+    <div style={{
+      border: '1px solid var(--color-amber-deep)',
+      margin: '32px 0',
+      fontFamily: 'var(--font-mono)',
+      background: 'var(--color-bg)',
+    }}>
+      {/* Header */}
+      <div style={{
+        background: 'var(--color-bg2)',
+        borderBottom: '1px solid var(--color-amber-deep)',
+        padding: '10px 18px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+          {'// proof: safe formula = standard formula'}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--color-amber-dim)' }}>
+          {shown}/{PROOF_STEPS.length} steps
+        </span>
+      </div>
+
+      {/* Steps */}
+      <div style={{ padding: 'clamp(14px, 3vw, 24px) clamp(14px, 3vw, 28px)' }}>
+        {PROOF_STEPS.slice(0, shown).map((step, i) => (
+          <div
+            key={i}
+            style={{
+              marginBottom: i < shown - 1 ? 20 : 0,
+              opacity: 1,
+              animation: 'fadeIn 0.25s ease',
+            }}
+          >
+            <div style={{
+              fontSize: 'clamp(13px, 2.5vw, 16px)',
+              color: step.highlight ? '#7ec87e' : 'var(--color-amber-text)',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.03em',
+              padding: '10px 14px',
+              background: step.highlight ? 'rgba(126,200,126,0.07)' : 'var(--color-bg2)',
+              border: `1px solid ${step.highlight ? '#7ec87e' : 'var(--color-amber-deep)'}`,
+              marginBottom: 6,
+              wordBreak: 'break-word',
+            }}>
+              {step.eq}
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 9, color: 'var(--color-magenta)', letterSpacing: '0.1em', flexShrink: 0, paddingTop: 2 }}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div>
+                <span style={{ fontSize: 11, color: step.highlight ? '#7ec87e' : 'var(--color-amber)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
+                  {step.label}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--color-amber-dim)', lineHeight: 1.5 }}>
+                  {step.note}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Next / Done button */}
+        <div style={{ marginTop: 20 }}>
+          {!allDone ? (
+            <button
+              onClick={() => setShown(s => Math.min(s + 1, PROOF_STEPS.length))}
+              style={{
+                background: 'var(--color-magenta)',
+                color: '#000',
+                border: 'none',
+                padding: '7px 18px',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Next step →
+            </button>
+          ) : (
+            <div style={{
+              padding: '10px 14px',
+              borderLeft: '3px solid #7ec87e',
+              background: 'rgba(126,200,126,0.06)',
+              fontSize: 12,
+              color: '#7ec87e',
+            }}>
+              Q.E.D. — both formulas compute the same midpoint. The safe version just avoids the overflow.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   6. ComplexityTable — interactive n vs log₂(n) explorer
+───────────────────────────────────────────────────────── */
+
+const TABLE_ROWS = [
+  { n: 8,            k: 3  },
+  { n: 64,           k: 6  },
+  { n: 1_024,        k: 10 },
+  { n: 1_000_000,    k: 20 },
+  { n: 1_000_000_000, k: 30 },
+];
+
+export function ComplexityTable() {
+  const [n, setN] = useState(1024);
+  const bSteps = Math.ceil(Math.log2(Math.max(n, 2)));
+  const ratio = Math.round(n / bSteps);
+
+  return (
+    <div style={{
+      border: '1px solid var(--color-amber-deep)',
+      margin: '32px 0',
+      fontFamily: 'var(--font-mono)',
+      background: 'var(--color-bg)',
+    }}>
+      <div style={{
+        background: 'var(--color-bg2)',
+        borderBottom: '1px solid var(--color-amber-deep)',
+        padding: '10px 18px',
+      }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+          {'// O(log n) — steps to search n elements'}
+        </span>
+      </div>
+
+      {/* Static table */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: 12,
+          color: 'var(--color-amber-dim)',
+        }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--color-amber-deep)' }}>
+              {['Array size (n)', 'Linear steps', 'Binary steps k = log₂(n)', 'Ratio'].map(h => (
+                <th key={h} style={{
+                  padding: '8px 16px',
+                  textAlign: 'left',
+                  fontSize: 9,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-amber-dim)',
+                  fontWeight: 400,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {TABLE_ROWS.map(row => (
+              <tr
+                key={row.n}
+                style={{ borderBottom: '1px solid var(--color-amber-deep)' }}
+              >
+                <td style={{ padding: '9px 16px', color: 'var(--color-amber-text)' }}>
+                  {row.n.toLocaleString()}
+                </td>
+                <td style={{ padding: '9px 16px', color: 'var(--color-amber-dim)' }}>
+                  {row.n.toLocaleString()}
+                </td>
+                <td style={{ padding: '9px 16px', color: 'var(--color-magenta)', fontWeight: 700 }}>
+                  {row.k}
+                </td>
+                <td style={{ padding: '9px 16px', color: '#7ec87e' }}>
+                  {Math.round(row.n / row.k).toLocaleString()}×
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Interactive slider */}
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(14px, 3vw, 20px) clamp(14px, 3vw, 20px)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, color: 'var(--color-amber-dim)', letterSpacing: '0.08em', flexShrink: 0 }}>
+            try any n:
+          </span>
+          <input
+            type="range"
+            min={2}
+            max={1048576}
+            step={1}
+            value={n}
+            onChange={e => setN(Number(e.target.value))}
+            style={{ flex: 1, minWidth: 120, accentColor: 'var(--color-amber)' }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--color-amber)', minWidth: 80, textAlign: 'right' }}>
+            n = {n.toLocaleString()}
+          </span>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 8,
+        }}>
+          {[
+            { label: 'Linear worst case', value: `${n.toLocaleString()} steps`, color: 'var(--color-amber-dim)' },
+            { label: 'Binary worst case', value: `${bSteps} steps`, color: 'var(--color-magenta)' },
+            { label: 'Binary is faster by', value: `${ratio.toLocaleString()}×`, color: '#7ec87e' },
+          ].map(stat => (
+            <div key={stat.label} style={{
+              padding: '10px 14px',
+              background: 'var(--color-bg2)',
+              border: '1px solid var(--color-amber-deep)',
+            }}>
+              <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
+                {stat.label}
+              </div>
+              <div style={{ fontSize: 15, color: stat.color, fontWeight: 700 }}>
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   7. SearchRaceVisualizer — linear vs binary search race
+───────────────────────────────────────────────────────── */
+
+const RACE_SIZE = 16;
+const RACE_ARR = Array.from({ length: RACE_SIZE }, (_, i) => i + 1);
+const RACE_SPEEDS = { slow: 700, normal: 350, fast: 120 };
+
+type LinearStep = { idx: number; found: boolean };
+type BinaryStep = { low: number; high: number; mid: number; found: boolean };
+
+function computeLinear(target: number): LinearStep[] {
+  const steps: LinearStep[] = [];
+  for (let i = 0; i < RACE_SIZE; i++) {
+    steps.push({ idx: i, found: RACE_ARR[i] === target });
+    if (RACE_ARR[i] === target) break;
+  }
+  return steps;
+}
+
+function computeBinary(target: number): BinaryStep[] {
+  const steps: BinaryStep[] = [];
+  let lo = 0, hi = RACE_SIZE - 1;
+  while (lo <= hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    steps.push({ low: lo, high: hi, mid, found: RACE_ARR[mid] === target });
+    if (RACE_ARR[mid] === target) break;
+    else if (RACE_ARR[mid] < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return steps;
+}
+
+export function SearchRaceVisualizer() {
+  const [target, setTarget] = useState(14);
+  const [speed, setSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
+  const [playing, setPlaying] = useState(false);
+  const [lStep, setLStep] = useState(-1);
+  const [bStep, setBStep] = useState(-1);
+
+  const linearSteps = useMemo(() => computeLinear(target), [target]);
+  const binarySteps = useMemo(() => computeBinary(target), [target]);
+
+  const maxL = linearSteps.length - 1;
+  const maxB = binarySteps.length - 1;
+  const lDone = lStep >= maxL && lStep >= 0;
+  const bDone = bStep >= maxB && bStep >= 0;
+  const bothDone = lDone && bDone;
+
+  const reset = () => {
+    setPlaying(false);
+    setLStep(-1);
+    setBStep(-1);
+  };
+
+  const handleTarget = (t: number) => { setTarget(t); reset(); };
+
+  useEffect(() => {
+    if (!playing) return;
+    const ml = linearSteps.length - 1;
+    const mb = binarySteps.length - 1;
+    const id = setInterval(() => {
+      setLStep(prev => (prev >= ml ? prev : prev + 1));
+      setBStep(prev => (prev >= mb ? prev : prev + 1));
+    }, RACE_SPEEDS[speed]);
+    return () => clearInterval(id);
+  }, [playing, speed, linearSteps.length, binarySteps.length]);
+
+  useEffect(() => {
+    if (playing && lStep >= maxL && bStep >= maxB) setPlaying(false);
+  }, [playing, lStep, bStep, maxL, maxB]);
+
+  const curL = lStep >= 0 ? linearSteps[Math.min(lStep, maxL)] : null;
+  const curB = bStep >= 0 ? binarySteps[Math.min(bStep, maxB)] : null;
+
+  const lColor = (i: number) => {
+    if (!curL) return 'var(--color-bg2)';
+    if (i === curL.idx) return curL.found ? 'rgba(126,200,126,0.22)' : 'rgba(217,119,6,0.28)';
+    if (i < curL.idx) return 'rgba(80,80,80,0.18)';
+    return 'var(--color-bg2)';
+  };
+  const lBorder = (i: number) => {
+    if (!curL) return 'var(--color-amber-deep)';
+    if (i === curL.idx) return curL.found ? '#7ec87e' : 'var(--color-amber)';
+    if (i < curL.idx) return 'rgba(80,80,80,0.3)';
+    return 'var(--color-amber-deep)';
+  };
+  const lText = (i: number) => {
+    if (!curL) return 'var(--color-amber-dim)';
+    if (i === curL.idx) return curL.found ? '#7ec87e' : 'var(--color-amber)';
+    if (i < curL.idx) return 'rgba(100,100,100,0.45)';
+    return 'var(--color-amber-dim)';
+  };
+
+  const bColor = (i: number) => {
+    if (!curB) return 'var(--color-bg2)';
+    if (i === curB.mid) return curB.found ? 'rgba(126,200,126,0.22)' : 'rgba(126,200,227,0.22)';
+    if (i < curB.low || i > curB.high) return 'rgba(40,40,40,0.5)';
+    return 'var(--color-bg2)';
+  };
+  const bBorder = (i: number) => {
+    if (!curB) return 'var(--color-amber-deep)';
+    if (i === curB.mid) return curB.found ? '#7ec87e' : '#7ec8e3';
+    if (i < curB.low || i > curB.high) return 'rgba(70,70,70,0.3)';
+    return 'var(--color-amber-deep)';
+  };
+  const bText = (i: number) => {
+    if (!curB) return 'var(--color-amber-dim)';
+    if (i === curB.mid) return curB.found ? '#7ec87e' : '#7ec8e3';
+    if (i < curB.low || i > curB.high) return 'rgba(90,90,90,0.4)';
+    return 'var(--color-amber-dim)';
+  };
+
+  const lStatusText = !curL
+    ? 'press ▶ RACE to start'
+    : curL.found
+    ? `found ${target} at index ${curL.idx} ✓`
+    : `checking index ${curL.idx} → value ${RACE_ARR[curL.idx]}`;
+
+  const bStatusText = !curB
+    ? 'waiting...'
+    : curB.found
+    ? `found ${target} at index ${curB.mid} ✓`
+    : `mid=${curB.mid} (value ${RACE_ARR[curB.mid]}), ${RACE_ARR[curB.mid] < target ? 'target is right →' : 'target is left ←'}`;
+
+  return (
+    <div style={{
+      border: '1px solid var(--color-amber-deep)',
+      margin: '32px 0',
+      fontFamily: 'var(--font-mono)',
+      background: 'var(--color-bg)',
+    }}>
+      {/* Controls */}
+      <div style={{
+        background: 'var(--color-bg2)',
+        borderBottom: '1px solid var(--color-amber-deep)',
+        padding: '10px 16px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 12,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+          {'// search-race — sorted array [1…16]'}
+        </span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 10, color: 'var(--color-amber-dim)' }}>target:</span>
+          {[4, 10, 14, 16].map(t => (
+            <button key={t} onClick={() => handleTarget(t)} style={{
+              padding: '3px 8px', fontSize: 10, fontFamily: 'var(--font-mono)',
+              background: target === t ? 'var(--color-amber)' : 'transparent',
+              color: target === t ? '#000' : 'var(--color-amber-dim)',
+              border: `1px solid ${target === t ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+              cursor: 'pointer',
+            }}>{t}</button>
+          ))}
+          <span style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginLeft: 4 }}>speed:</span>
+          {(['slow', 'normal', 'fast'] as const).map(s => (
+            <button key={s} onClick={() => setSpeed(s)} style={{
+              padding: '3px 8px', fontSize: 10, fontFamily: 'var(--font-mono)',
+              background: speed === s ? 'var(--color-bg)' : 'transparent',
+              color: speed === s ? 'var(--color-amber)' : 'var(--color-amber-dim)',
+              border: `1px solid ${speed === s ? 'var(--color-amber-deep)' : 'transparent'}`,
+              cursor: 'pointer',
+            }}>{s}</button>
+          ))}
+          {!bothDone ? (
+            <button onClick={() => setPlaying(p => !p)} style={{
+              background: 'var(--color-magenta)', color: '#000', border: 'none',
+              padding: '4px 14px', fontSize: 10, fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.08em', fontWeight: 700, cursor: 'pointer',
+            }}>
+              {playing ? '⏸ PAUSE' : lStep < 0 ? '▶ RACE' : '▶ RESUME'}
+            </button>
+          ) : (
+            <button onClick={reset} style={{
+              background: 'transparent', color: 'var(--color-amber-dim)',
+              border: '1px solid var(--color-amber-deep)',
+              padding: '4px 14px', fontSize: 10, fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.08em', cursor: 'pointer',
+            }}>↺ RESET</button>
+          )}
+        </div>
+      </div>
+
+      {/* Tracks */}
+      <div style={{ padding: 'clamp(14px, 3vw, 22px)' }}>
+        {/* Linear */}
+        <div style={{ marginBottom: 26 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--color-amber)', letterSpacing: '0.1em' }}>LINEAR SEARCH</span>
+              {bothDone && linearSteps.length > binarySteps.length && (
+                <span style={{ fontSize: 9, color: 'var(--color-amber-dim)', border: '1px solid var(--color-amber-deep)', padding: '1px 6px' }}>SLOWER</span>
+              )}
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--color-amber-dim)' }}>
+              {lStep + 1} step{lStep + 1 !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+            {RACE_ARR.map((val, i) => (
+              <div key={i} style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600,
+                background: lColor(i), border: `1px solid ${lBorder(i)}`, color: lText(i),
+                transition: 'all 0.18s', flexShrink: 0,
+              }}>{val}</div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', fontStyle: 'italic', minHeight: 14 }}>
+            {lStatusText}
+          </div>
+        </div>
+
+        {/* Binary */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: '#7ec8e3', letterSpacing: '0.1em' }}>BINARY SEARCH</span>
+              {bothDone && (
+                <span style={{ fontSize: 9, color: '#7ec87e', border: '1px solid #7ec87e', padding: '1px 6px' }}>WINNER</span>
+              )}
+            </div>
+            <span style={{ fontSize: 11, color: '#7ec8e3' }}>
+              {bStep + 1} step{bStep + 1 !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+            {RACE_ARR.map((val, i) => (
+              <div key={i} style={{
+                width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600,
+                background: bColor(i), border: `1px solid ${bBorder(i)}`, color: bText(i),
+                transition: 'all 0.18s', flexShrink: 0,
+              }}>{val}</div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', fontStyle: 'italic', minHeight: 14 }}>
+            {bStatusText}
+          </div>
+        </div>
+
+        {/* Result */}
+        {bothDone && (
+          <div style={{
+            marginTop: 20, padding: '12px 16px',
+            borderLeft: '3px solid #7ec87e',
+            background: 'rgba(126,200,126,0.06)',
+            fontSize: 12, color: '#7ec87e',
+          }}>
+            Binary found <strong>{target}</strong> in <strong>{binarySteps.length} step{binarySteps.length !== 1 ? 's' : ''}</strong>.
+            Linear needed <strong>{linearSteps.length}</strong>. That&apos;s{' '}
+            <strong>{Math.round(linearSteps.length / binarySteps.length)}× fewer comparisons</strong>.
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: '8px 16px',
+        display: 'flex', gap: 18, flexWrap: 'wrap',
+      }}>
+        {[
+          { color: 'var(--color-amber)', label: 'linear: current' },
+          { color: 'rgba(100,100,100,0.5)', label: 'already checked' },
+          { color: '#7ec8e3', label: 'binary: mid' },
+          { color: 'rgba(50,50,50,0.8)', label: 'eliminated half' },
+          { color: '#7ec87e', label: 'found!' },
+        ].map(({ color, label }) => (
+          <span key={label} style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.08em' }}>
+            <span style={{ color }}>■</span> {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function LayerModel() {
   const [expanded, setExpanded] = useState<number | null>(null);

@@ -1,0 +1,142 @@
+---
+title: "Binary Search: The Math Nobody Actually Derives (With a Live Race)"
+excerpt: "Not just how it works — why the math works. The integer overflow trap hiding in the naive formula, the full O(log n) derivation from first principles, and a live animation to see both searches race."
+date: 2026-07-07
+readTime: 8 min read
+tags: ["algorithms", "computer-science", "mathematics"]
+published: true
+---
+
+I learned binary search theory today. Not the "here's the code, now memorize it" version — the actual math underneath it.
+
+Two things bothered me going in: **why does the standard midpoint formula have a production bug**, and **how do you actually prove O(log n)** — not just assert it? ChatGPT walked me through the derivations. Here's everything I worked through, with interactive demos so the intuition sticks.
+
+---
+
+## What Binary Search Actually Does
+
+You have a sorted array. You want to find a target value. Instead of scanning left to right, you:
+
+1. Check the middle element
+2. If it matches — done
+3. If the target is smaller — search the left half
+4. If the target is larger — search the right half
+5. Repeat until found or the search space is empty
+
+Each step cuts the problem in half. The code is simple. The math is interesting.
+
+---
+
+## Part 1: The Bug in the Formula You Were Taught
+
+The "obvious" midpoint formula:
+
+```
+mid = (low + high) / 2
+```
+
+This is mathematically correct. It will also crash your program on large arrays.
+
+**The problem is integer overflow.** If `low` and `high` are both close to the maximum value a 32-bit integer can hold (~2.1 billion), their sum exceeds what the variable can store. You get a negative number or garbage — not a crash with a clear error message, just silently wrong behavior.
+
+This isn't hypothetical. This exact bug lived in Java's `Arrays.binarySearch()` for **nine years** before Joshua Bloch caught it in 2006.
+
+The safe formula:
+
+```
+mid = low + (high - low) / 2
+```
+
+Subtract first, then add. `(high - low)` is always smaller than either number alone, so it can't overflow.
+
+But are these actually the same? Here's the algebraic proof:
+
+<MidpointProof />
+
+They compute the exact same midpoint. The safe version just sidesteps the intermediate sum that causes the overflow.
+
+---
+
+## Part 2: Why O(log n)? The Full Derivation
+
+Most explanations just say "it halves the array each time, so it's logarithmic." That's the intuition — here's the actual proof.
+
+**Setup:**
+- `n` = number of elements in the sorted array
+- `k` = number of iterations in the worst case
+
+**The halving pattern:**
+
+Each step reduces the search space by half:
+
+| Iteration | Search space |
+|-----------|-------------|
+| 0         | n           |
+| 1         | n / 2       |
+| 2         | n / 2²      |
+| 3         | n / 2³      |
+| k         | n / 2^k     |
+
+**The derivation:**
+
+Worst case: we keep halving until exactly 1 element remains. Set the search space at step `k` equal to 1:
+
+```
+n / 2^k = 1
+```
+
+Multiply both sides by 2^k:
+
+```
+n = 2^k
+```
+
+Apply log base 2 to both sides:
+
+```
+log₂(n) = log₂(2^k)
+```
+
+Use the logarithmic power rule — log(a^b) = b · log(a):
+
+```
+log₂(n) = k · log₂(2)
+```
+
+Since log₂(2) = 1:
+
+```
+k = log₂(n)
+```
+
+The maximum steps to search `n` elements is log₂(n). Drop the base for Big-O notation: **O(log n)**.
+
+What does this feel like in practice?
+
+<ComplexityTable />
+
+A billion-element array takes at most **30 comparisons**. That's the real magic — not the code, but what the math guarantees.
+
+---
+
+## Part 3: Watch It Race
+
+Derivations are one thing. Here's the visual:
+
+<SearchRaceVisualizer />
+
+Try different targets. Target **14** (near the end) shows the gap most clearly — linear search grinds through 14 comparisons while binary search jumps to the answer in 4.
+
+Target **4** (near the beginning) is linear search's best case — worth seeing how the algorithms compare when linear actually has an advantage.
+
+---
+
+## The Three Things Worth Internalizing
+
+**1. Sorted is the prerequisite.** Binary search only works because you can eliminate half the search space based on a comparison. Unsorted data: you're back to linear.
+
+**2. The overflow bug isn't trivia.** The naive formula fails in production. The safe formula `low + (high - low) / 2` is what you should actually write — and now you can prove why it's equivalent.
+
+**3. Logarithms grow impossibly slowly.** This is the insight that makes algorithms like binary search, balanced trees, and merge sort so powerful. A problem 1000× larger takes only ~10 more steps. That asymptote is the whole game.
+
+The code is five lines. The math behind it earns that simplicity.

@@ -6,9 +6,9 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import rehypePrettyCode from 'rehype-pretty-code';
 import remarkGfm from 'remark-gfm';
 import type { PanelId } from '@/types/panel';
-import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel } from '@/components/blog/BlogMdxComponents';
+import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer } from '@/components/blog/BlogMdxComponents';
 
-const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel };
+const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer };
 
 interface Props {
   initialPanel: PanelId;
