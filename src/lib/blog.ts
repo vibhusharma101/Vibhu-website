@@ -6,6 +6,12 @@ import type { BlogPost } from '@/types/blog';
 
 const BLOG_DIR = path.join(process.cwd(), 'src', 'content', 'blog');
 
+function normalizeDate(val: unknown): string {
+  if (!val) return '';
+  if (val instanceof Date) return val.toISOString().split('T')[0];
+  return String(val);
+}
+
 export function getAllPosts(): BlogPost[] {
   if (!fs.existsSync(BLOG_DIR)) return [];
 
@@ -21,7 +27,7 @@ export function getAllPosts(): BlogPost[] {
         slug,
         title:     data.title    ?? slug,
         excerpt:   data.excerpt  ?? '',
-        date:      data.date     ?? '',
+        date:      normalizeDate(data.date),
         readTime:  data.readTime ?? rt.text,
         tags:      data.tags     ?? [],
         published: data.published ?? false,
