@@ -1,4 +1,5 @@
 import './globals.css';
+import 'katex/dist/katex.min.css';
 import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
       'I build AI-native products end-to-end — production agents, RAG pipelines, and the full stack that ships them. Currently building India\'s first AI workforce for construction at Powerplay.',
     type: 'website',
     locale: 'en_IN',
-    url: 'https://vibhanshu.dev',
+    url: 'https://www.viiforwin.in',
   },
   twitter: {
     card: 'summary_large_image',
