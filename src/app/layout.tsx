@@ -14,7 +14,7 @@ export const metadata: Metadata = {
       'I build AI-native products end-to-end — production agents, RAG pipelines, and the full stack that ships them. Currently building India\'s first AI workforce for construction at Powerplay.',
     type: 'website',
     locale: 'en_IN',
-    url: 'https://vibhanshu.dev',
+    url: 'https://viiforwin.com',
   },
   twitter: {
     card: 'summary_large_image',
