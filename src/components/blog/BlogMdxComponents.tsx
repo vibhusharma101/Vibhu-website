@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import katex from 'katex';
 
 /* ─────────────────────────────────────────────────────────
    1. ComparisonToggle — CLAUDE.md (handbook) vs Hooks (gate)
@@ -568,29 +569,39 @@ const LAYERS = [
    5. MidpointProof — step-by-step algebraic derivation
 ───────────────────────────────────────────────────────── */
 
+function KaTeXEq({ math, display = false }: { math: string; display?: boolean }) {
+  const html = katex.renderToString(math, { throwOnError: false, displayMode: display });
+  return (
+    <span
+      dangerouslySetInnerHTML={{ __html: html }}
+      style={{ display: display ? 'block' : 'inline' }}
+    />
+  );
+}
+
 const PROOF_STEPS = [
   {
-    eq: 'low + (high − low) / 2',
+    eq: String.raw`low + \frac{high - low}{2}`,
     label: 'Safe formula (starting point)',
-    note: 'This is what production code uses. We want to prove it equals the standard (low + high) / 2.',
+    note: 'This is what production code uses. We want to prove it equals the standard formula.',
     highlight: false,
   },
   {
-    eq: '= (2·low) / 2  +  (high − low) / 2',
+    eq: String.raw`= \frac{2 \cdot low}{2} + \frac{high - low}{2}`,
     label: 'Find a common denominator',
-    note: 'Rewrite "low" as "2·low / 2" so both terms share denominator 2.',
+    note: 'Rewrite "low" as 2·low/2 so both terms share denominator 2.',
     highlight: false,
   },
   {
-    eq: '= (2·low + high − low) / 2',
+    eq: String.raw`= \frac{2 \cdot low + high - low}{2}`,
     label: 'Combine the fractions',
     note: 'Both fractions share the same denominator — merge them into one.',
     highlight: false,
   },
   {
-    eq: '= (low + high) / 2  ✓',
+    eq: String.raw`= \frac{low + high}{2} \checkmark`,
     label: 'Simplify',
-    note: '2·low − low = low. This is exactly the standard formula — just computed safely.',
+    note: '2·low − low = low. Identical to the standard formula — just overflow-safe.',
     highlight: true,
   },
 ];
@@ -635,17 +646,13 @@ export function MidpointProof() {
             }}
           >
             <div style={{
-              fontSize: 'clamp(13px, 2.5vw, 16px)',
-              color: step.highlight ? '#7ec87e' : 'var(--color-amber-text)',
-              fontFamily: 'var(--font-mono)',
-              letterSpacing: '0.03em',
               padding: '10px 14px',
               background: step.highlight ? 'rgba(126,200,126,0.07)' : 'var(--color-bg2)',
               border: `1px solid ${step.highlight ? '#7ec87e' : 'var(--color-amber-deep)'}`,
               marginBottom: 6,
-              wordBreak: 'break-word',
+              overflowX: 'auto',
             }}>
-              {step.eq}
+              <KaTeXEq math={step.eq} display />
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 9, color: 'var(--color-magenta)', letterSpacing: '0.1em', flexShrink: 0, paddingTop: 2 }}>

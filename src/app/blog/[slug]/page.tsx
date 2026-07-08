@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import rehypePrettyCode from 'rehype-pretty-code';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { BlogShell } from '@/components/blog/BlogShell';
 import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer } from '@/components/blog/BlogMdxComponents';
@@ -64,8 +66,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             components={mdxComponents}
             options={{
               mdxOptions: {
-                remarkPlugins: [remarkGfm],
+                remarkPlugins: [remarkGfm, remarkMath],
                 rehypePlugins: [
+                  rehypeKatex as never,
                   [rehypePrettyCode as never, {
                     theme: 'one-dark-pro',
                     keepBackground: true,
