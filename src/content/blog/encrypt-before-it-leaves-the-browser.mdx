@@ -1,0 +1,123 @@
+---
+title: "Encrypt the Secret Before It Leaves the Browser: RSA + SSM + an IAM Role Split"
+excerpt: "TLS protects a password in transit — but it's still plaintext in the browser's Network tab, in your server logs, and in your database. Here's defense-in-depth for third-party credentials, including an IAM trick that stops even a compromised API server from reading stored secrets."
+date: "2026-07-09"
+readTime: "9 min read"
+tags: ["security", "aws", "cryptography", "backend"]
+published: true
+---
+
+Your app asks an admin to paste in an API key for a third-party system. They type it into a form, hit save, and it lands in your database. TLS was on the whole time, so you're safe. Right?
+
+Not really. TLS protects the credential *in transit*. But that same plaintext secret is sitting in:
+
+- The browser's **Network tab**, readable by anyone with the console open
+- Your **server logs**, if any middleware logs request bodies
+- Your **database**, in whatever field you stored it
+
+TLS is one layer. For a credential that unlocks someone else's system, one layer isn't enough. Here's the defense-in-depth version we built.
+
+---
+
+## The Layers
+
+The core idea: the secret should be **encrypted before it ever leaves the browser**, and the plaintext should live in exactly one place that your application database can't even see.
+
+<SecurityLayerDiagram />
+
+Click through each layer above — the interesting part isn't any single step, it's how they compose. Let me walk the flow.
+
+### 1. The browser encrypts first
+
+Before the credential leaves the page, the browser encrypts it with an **RSA public key** using RSA-OAEP. This is all native — no library needed:
+
+```js
+// Public key served to the browser as SPKI DER, base64-encoded
+const key = await crypto.subtle.importKey(
+  'spki', spkiBytes, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']
+);
+const ciphertext = await crypto.subtle.encrypt(
+  { name: 'RSA-OAEP' },
+  key,
+  new TextEncoder().encode(plaintextSecret)
+);
+// Only `ciphertext` is sent to the server. Check your Network tab — no plaintext.
+```
+
+Now the Network tab shows ciphertext. Your request-logging middleware logs ciphertext. The plaintext never left the user's machine as readable text.
+
+### 2. The backend decrypts, then hands off to SSM
+
+The API server holds the **RSA private key** and decrypts the incoming ciphertext. But it does *not* store the plaintext in your database. It writes it to **AWS SSM Parameter Store as a SecureString** — which KMS-encrypts it at rest — and stores only the *SSM path* in your own DB.
+
+```js
+const plaintext = privateDecrypt(rsaPrivateKey, ciphertext);
+await ssm.putParameter({
+  Name: `/prod/integrations/${orgId}/api_key`,
+  Value: plaintext.toString(),
+  Type: 'SecureString',   // KMS-encrypted at rest
+  Overwrite: true,
+});
+// Your DB stores ONLY the path string — never the secret.
+await Integration.updateOne({ orgId }, { ssmPath: `/prod/integrations/${orgId}/api_key` });
+```
+
+A breach of your application database now yields a *path string*. Not a credential. The attacker learns where the secret lives, not what it is.
+
+---
+
+## The Clever Bit: The IAM Role Split
+
+Here's the part I'm proud of. The public-facing API server and the background worker run under **different IAM roles**, with different permissions on SSM:
+
+- **API server role** → `ssm:PutParameter` only. It can *write* secrets. It **cannot read them back.**
+- **Worker role** → `ssm:GetParameter`. Only the background worker (which actually calls the third-party system) can *decrypt and use* the credential.
+
+Think about what this buys you. Your API server is the internet-facing attack surface — it's the thing most likely to get popped. And even if an attacker gets **full remote code execution on your API server**, they still can't read stored credentials. The IAM policy physically denies the `GetParameter` call. The blast radius of an API compromise stops at "can write new secrets," not "can exfiltrate every customer's credentials."
+
+That's the difference between a bad day and a company-ending breach.
+
+---
+
+## Key Rotation Without Downtime
+
+One RSA keypair forever is a liability. We use a small **keypair registry** so keys can rotate:
+
+- Each key has a `key_id`
+- There's a designated **current** key, served to browsers for new encryptions
+- **Old keys stay decryptable** so any ciphertext already in flight (or briefly cached) still opens
+
+```js
+const keys = {
+  '2026-01': { public: '...', private: '...' },  // retired, still decrypts
+  '2026-07': { public: '...', private: '...' },  // current, served to clients
+};
+const CURRENT_KEY_ID = '2026-07';
+// Client encrypts with current; server picks the private key by the key_id sent alongside.
+```
+
+Rotate by adding a new keypair and pointing `CURRENT_KEY_ID` at it. Retire old keys once you're confident nothing encrypted with them is still in flight.
+
+---
+
+## The Rollout (What DevOps Actually Runs)
+
+Generating the material is a couple of `openssl` commands:
+
+```bash
+# Private key (goes into an SSM SecureString, worker-role readable)
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out private.pem
+
+# Public key as SPKI DER, base64 — this is what the browser imports
+openssl rsa -in private.pem -pubout -outform DER | base64 -w0
+```
+
+The public key gets served to browsers. The private key goes into a SecureString that only the worker role can read. No secret material is ever committed to the repo.
+
+---
+
+## Is This Overkill?
+
+For a low-stakes internal tool? Maybe. For **credentials that unlock a customer's ERP, payment processor, or cloud account?** No. This is proportionate.
+
+The threat model isn't "someone sniffs the wire" — TLS handles that. The threat model is "someone gets into my systems and I don't want that to mean every stored credential is instantly theirs." Each layer here — browser-side encryption, SSM+KMS, the IAM read/write split — assumes the layer in front of it has already failed. That's what defense-in-depth actually means: not one strong wall, but walls that hold even after the one before them falls.

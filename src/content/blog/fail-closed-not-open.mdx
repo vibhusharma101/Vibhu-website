@@ -1,0 +1,105 @@
+---
+title: "Fail Closed, Not Open: Security Controls That Break the Safe Way"
+excerpt: "The most dangerous security bug isn't a missing control — it's a control that silently does nothing when misconfigured. Four real before/after examples of designing things to break loudly and safely instead of quietly and dangerously."
+date: "2026-07-09"
+readTime: "7 min read"
+tags: ["security", "engineering-practices", "code-review"]
+published: true
+---
+
+The scariest security bug I've reviewed wasn't a missing check. It was a check that **silently did nothing** the moment its config was wrong.
+
+The code looked defensive. It had a fallback. It handled the edge case gracefully. And that graceful handling was exactly the problem: when the encryption key wasn't configured, it fell back to storing the data *as plaintext* — quietly, with no error, in production.
+
+That's **failing open**: when something goes wrong, the door swings open. The opposite — **failing closed** — means when something goes wrong, the door locks. For security controls, closed is almost always the correct direction.
+
+Here are four patterns, each a real before/after. Toggle between the dangerous and safe versions:
+
+<FailModeCompare />
+
+Let me expand on why each one matters.
+
+---
+
+## 1. Allow-list, Not Deny-list
+
+When you build an outbound payload — an API response, a webhook, an export — you have two choices. Start with everything and remove the sensitive fields (deny-list), or start with nothing and add only the safe fields (allow-list).
+
+They look equivalent. They are not.
+
+- A **deny-list** leaks anything you *forget to add to it.* Someone adds a `ssn` field to the model six months from now, the sanitizer doesn't know about it, and it sails straight out the door.
+- An **allow-list** drops anything you *forget to add to it.* Same forgotten field — but now it's silently excluded, not silently leaked.
+
+The failure mode of an allow-list is "a field is missing from the output" — annoying, caught in testing, fixed in minutes. The failure mode of a deny-list is "PII in a public API response" — a breach. Build the payload from only the fields you deliberately mapped.
+
+---
+
+## 2. The Fail-Open Bug I Caught in Review
+
+This is the one from the intro. The logic was:
+
+> No encryption key configured? Accept the plaintext and store it.
+
+The intent was a local-dev convenience — you don't want to force every engineer to set up KMS to run the app locally. Reasonable goal. But the fallback applied **everywhere, including production.** A misconfigured prod deploy would silently downgrade to plaintext storage and nobody would know until an audit — or a breach.
+
+The fix keeps the dev convenience but **gates it to local environments.** In production, a missing key throws immediately. The deploy fails loudly at startup instead of succeeding into an insecure state:
+
+```js
+if (!encryptionKey) {
+  if (isProduction()) throw new Error('Encryption key required in production');
+  return storePlaintext(data); // local-only escape hatch
+}
+```
+
+The principle: a security downgrade should never be *silent*, and never the *default in production.*
+
+---
+
+## 3. Throw on Missing Config, Don't Default
+
+A close cousin. We had:
+
+```js
+const ssmPrefix = process.env.SSM_PREFIX ?? '/dev/fallback';
+```
+
+Harmless-looking. But if a production deploy is missing `SSM_PREFIX`, this doesn't fail — it *quietly writes production secrets into the `/dev` namespace.* Wrong place, no error, and now your prod secrets are sitting somewhere with dev-level access controls.
+
+The fix is to delete the default and demand the value:
+
+```js
+const ssmPrefix = process.env.SSM_PREFIX;
+if (!ssmPrefix) throw new Error('SSM_PREFIX is required');
+```
+
+A convenient default for a security-relevant path is a foot-gun. **Missing config should break the build, not pick a guess.**
+
+---
+
+## 4. Human-Readable Errors, Internals in the Log
+
+When a security control fails, someone needs the details — but not the person on the other side of the request. Leaking `SSM_PREFIX not set at /app/src/secrets.ts:42` into an HTTP response hands an attacker a map of your internals: env var names, file paths, your framework, your directory structure.
+
+Split the audience:
+
+- **The user** gets: *"This integration isn't configured correctly — please contact support."*
+- **The server log** gets: the full error, the env var name, the stack trace.
+
+```js
+console.error('[secrets] config error:', err); // full detail, server-side only
+res.status(500).json({ error: 'Service misconfigured — contact support' });
+```
+
+The person who can fix it (your on-call engineer, reading logs) gets everything. The person who might exploit it (whoever's hitting your endpoint) gets nothing useful.
+
+---
+
+## The Mindset
+
+None of these are exotic. No cryptography, no fancy tooling. They're all the same instinct applied in different places:
+
+> **When something is wrong, break in the direction of safety.**
+
+Missing key? Throw, don't downgrade. Forgot a field? Drop it, don't leak it. Bad config? Fail the deploy, don't guess a default. Error? Log the details, don't ship them.
+
+The bugs that hurt most aren't the loud ones — those get caught. They're the ones where everything *looks* fine, the tests pass, the deploy is green, and a control you were counting on has been silently doing nothing for three months. Fail closed, and that class of bug mostly stops existing.

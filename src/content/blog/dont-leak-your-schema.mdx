@@ -1,0 +1,89 @@
+---
+title: "Don't Leak Your Database Schema: The Manifest Pattern for Integrations"
+excerpt: "Your DB calls a field sub_code. Your integration partner and your UI should never see that name. Here's how a tiny translation table decouples your storage from your public contract — and lets you rename columns without breaking a single consumer."
+date: "2026-07-09"
+readTime: "7 min read"
+tags: ["architecture", "integrations", "api-design", "databases"]
+published: true
+---
+
+Somewhere in our database is a field called `sub_code`. It's a fine name internally. It is also a name that our integration partners, our frontend, and our error messages should **never, ever see.**
+
+Because the day we expose `sub_code` to the outside world is the day we can never rename it. Every consumer hardcodes it. It becomes load-bearing legacy the moment it leaks. And "we can't rename this database column because a partner's integration depends on the name" is a genuinely miserable place to end up.
+
+The fix is small: a translation layer between what you store and what you expose. I call it the **manifest pattern.**
+
+---
+
+## The Split: Public ID vs Physical Path
+
+Every field gets two names:
+
+- A **public id** — stable, meaningful, what consumers actually use. `material_code`.
+- A **physical path** — where the value actually lives in your document. `sub_code`.
+
+Consumers only ever touch the public id. The physical path is a private implementation detail.
+
+<ManifestMapper />
+
+Click any row to see the two sides. Then hit **"simulate DB rename"** — watch what happens to consumers when you change the underlying column. (Spoiler: nothing. That's the entire point.)
+
+### The phone-contact analogy
+
+You don't dial your mom's phone number from memory every time. You tap **"Mom."** The contact name is stable; the number behind it can change. When she switches carriers and gets a new number, you update it *once* in your contacts, and every future call to "Mom" just works.
+
+The public id is the contact name. The physical path is the phone number. The manifest is your contacts app.
+
+---
+
+## The Three Payoffs
+
+### 1. Stability — rename freely
+
+This is the headline. Rename `sub_code` to `sub_code_v2` in the database, change **one line** in the manifest, and every consumer keeps working. They were never coupled to the physical name — they were coupled to `material_code`, which didn't move.
+
+```js
+const MANIFEST = {
+  material_code:    'sub_code_v2',          // ← only this line changed
+  vendor_name:      'assigned_vendor.name',
+  delivery_date:    'sched.eta',
+};
+```
+
+### 2. Security — never expose internals
+
+The frontend, the partner API, and your error messages only ever see `material_code`. Your actual schema — table shapes, nested document structure, naming conventions — stays private. Leaking `assigned_vendor.name` in an API response tells an attacker how your documents are shaped. Leaking `material_code` tells them nothing.
+
+### 3. Abstraction — users map logical fields
+
+When a partner configures their integration, they map *their* fields to *your logical fields* — `material_code`, `delivery_date` — not to `sub_code` and `sched.eta`. They're working with a clean domain vocabulary, not spelunking through your storage layout.
+
+---
+
+## How the Engine Uses It
+
+The manifest is just a `Map` from public id to physical path. To read a value, look up the path, then pull it out of the document — including nested, dotted paths — with a safe getter like lodash's `get`:
+
+```js
+import get from 'lodash.get';
+
+function readField(doc, publicId) {
+  const path = MANIFEST[publicId];          // 'assigned_vendor.name'
+  if (!path) throw new Error(`Unknown field: ${publicId}`);
+  return get(doc, path);                    // safely walks the nested path
+}
+
+readField(order, 'vendor_name'); // → order.assigned_vendor.name
+```
+
+That `get` matters: physical paths are often nested (`assigned_vendor.name`, `sched.eta`), and a naive `doc[path]` won't traverse them. The getter handles dotted paths and returns `undefined` instead of throwing on a missing intermediate object.
+
+---
+
+## The Bigger Idea: An Anti-Corruption Layer
+
+This pattern has a name in domain-driven design: an **anti-corruption layer.** It sits between your internal model and an external system, translating between the two so that neither one's vocabulary contaminates the other.
+
+Your database schema evolves on its own schedule. Your public contract evolves on its own schedule. The manifest is the seam between them — the one place where "the field moved" is a one-line change instead of a breaking, multi-team migration.
+
+It costs you a small lookup table and a getter function. It buys you the freedom to refactor your storage layer whenever you want, without ever sending a "breaking API change" email. That's a trade I'll take every time.

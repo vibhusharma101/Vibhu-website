@@ -1309,3 +1309,472 @@ export function LayerModel() {
     </div>
   );
 }
+
+
+/* ─────────────────────────────────────────────────────────
+   8. JobStateVisualizer — DB-backed job queue state machine
+───────────────────────────────────────────────────────── */
+
+type JobStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | 'STALE';
+type JobRow = { id: string; status: JobStatus; note?: string };
+
+const JOB_STATUS_COLOR: Record<JobStatus, string> = {
+  PENDING: 'var(--color-amber-dim)',
+  RUNNING: 'var(--color-amber)',
+  DONE:    '#7ec87e',
+  FAILED:  'var(--color-magenta)',
+  STALE:   '#ff8c42',
+};
+const JOB_STATUS_BG: Record<JobStatus, string> = {
+  PENDING: 'rgba(217,119,6,0.06)',
+  RUNNING: 'rgba(217,119,6,0.15)',
+  DONE:    'rgba(126,200,126,0.10)',
+  FAILED:  'rgba(255,20,99,0.10)',
+  STALE:   'rgba(255,140,66,0.10)',
+};
+const JOB_STATUS_ICON: Record<JobStatus, string> = {
+  PENDING: '○', RUNNING: '◉', DONE: '✓', FAILED: '✗', STALE: '⚠',
+};
+
+const JOB_SCENARIOS: { label: string; desc: string; frames: JobRow[][] }[] = [
+  {
+    label: 'Normal flow',
+    desc: 'Worker atomically claims a PENDING row in one findOneAndUpdate (PENDING → RUNNING), then finalizes to a terminal state.',
+    frames: [
+      [{ id: 'sync_4821', status: 'PENDING' }, { id: 'sync_4822', status: 'PENDING' }],
+      [{ id: 'sync_4821', status: 'RUNNING', note: 'claimed by worker_1' }, { id: 'sync_4822', status: 'PENDING' }],
+      [{ id: 'sync_4821', status: 'RUNNING', note: 'processing...' }, { id: 'sync_4822', status: 'RUNNING', note: 'claimed by worker_2' }],
+      [{ id: 'sync_4821', status: 'DONE', note: 'completed in 8.3s' }, { id: 'sync_4822', status: 'DONE', note: 'completed in 12.1s' }],
+    ],
+  },
+  {
+    label: 'Dedup',
+    desc: 'User clicks "Sync" twice. Second click finds an in-flight run and coalesces — no duplicate work runs.',
+    frames: [
+      [{ id: 'sync_4821', status: 'PENDING', note: 'first click' }],
+      [{ id: 'sync_4821', status: 'RUNNING', note: 'claimed' }],
+      [{ id: 'sync_4821', status: 'RUNNING', note: 'running...' }, { id: 'sync_4821_dup', status: 'PENDING', note: 'second click → already in-flight, dropped' }],
+      [{ id: 'sync_4821', status: 'DONE', note: 'one run, both clicks covered' }],
+    ],
+  },
+  {
+    label: 'Stale recovery',
+    desc: 'Worker dies mid-job. Next cron tick finds the row stuck in RUNNING > 15min → marks FAILED → re-enqueues for retry.',
+    frames: [
+      [{ id: 'sync_4821', status: 'RUNNING', note: 'started 18min ago — worker died' }],
+      [{ id: 'sync_4821', status: 'STALE', note: 'cron tick: running > 15min threshold' }],
+      [{ id: 'sync_4821', status: 'FAILED', note: 'marked FAILED by recovery sweep' }],
+      [{ id: 'sync_4821', status: 'PENDING', note: 're-enqueued for retry' }],
+      [{ id: 'sync_4821', status: 'RUNNING', note: 'claimed by healthy worker' }],
+      [{ id: 'sync_4821', status: 'DONE', note: 'completed successfully' }],
+    ],
+  },
+];
+
+export function JobStateVisualizer() {
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [frameIdx, setFrameIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+
+  const scenario = JOB_SCENARIOS[scenarioIdx];
+  const frame = scenario.frames[frameIdx];
+  const done = frameIdx >= scenario.frames.length - 1;
+
+  const reset = (sIdx = scenarioIdx) => { setScenarioIdx(sIdx); setFrameIdx(0); setPlaying(false); };
+
+  useEffect(() => {
+    if (!playing || done) { if (done) setPlaying(false); return; }
+    const id = setTimeout(() => setFrameIdx(f => f + 1), 900);
+    return () => clearTimeout(id);
+  }, [playing, frameIdx, done]);
+
+  return (
+    <div style={{ border: '1px solid var(--color-amber-deep)', margin: '32px 0', fontFamily: 'var(--font-mono)', background: 'var(--color-bg)' }}>
+      <div style={{ background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-amber-deep)', display: 'flex', flexWrap: 'wrap' }}>
+        {JOB_SCENARIOS.map((s, i) => (
+          <button key={i} onClick={() => reset(i)} style={{
+            padding: '10px 16px', fontSize: 10, fontFamily: 'var(--font-mono)',
+            background: scenarioIdx === i ? 'var(--color-bg)' : 'transparent',
+            color: scenarioIdx === i ? 'var(--color-amber)' : 'var(--color-amber-dim)',
+            border: 'none', borderBottom: scenarioIdx === i ? '2px solid var(--color-amber)' : '2px solid transparent',
+            cursor: 'pointer', letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>{s.label}</button>
+        ))}
+      </div>
+      <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--color-amber-deep)', background: 'var(--color-bg2)' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-amber-dim)', lineHeight: 1.5 }}>{scenario.desc}</span>
+      </div>
+      <div style={{ padding: 'clamp(12px,3vw,20px)', minHeight: 100 }}>
+        {frame.map((job, i) => (
+          <div key={`${job.id}-${i}`} style={{
+            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            padding: '10px 14px', marginBottom: 8,
+            background: JOB_STATUS_BG[job.status],
+            border: `1px solid ${JOB_STATUS_COLOR[job.status]}44`,
+            transition: 'all 0.3s',
+          }}>
+            <span style={{ fontSize: 14, color: JOB_STATUS_COLOR[job.status], flexShrink: 0 }}>{JOB_STATUS_ICON[job.status]}</span>
+            <span style={{ fontSize: 11, color: 'var(--color-amber-text)', fontWeight: 600, flex: '1 1 100px' }}>{job.id}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: JOB_STATUS_COLOR[job.status], border: `1px solid ${JOB_STATUS_COLOR[job.status]}`, padding: '2px 8px', flexShrink: 0 }}>
+              {job.status}
+            </span>
+            {job.note && <span style={{ fontSize: 10, color: 'var(--color-amber-dim)', fontStyle: 'italic' }}>{job.note}</span>}
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: '1px solid var(--color-amber-deep)', padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber-dim)' }}>tick {frameIdx + 1} / {scenario.frames.length}</span>
+        {!done ? (
+          <button onClick={() => setPlaying(p => !p)} style={{ background: 'var(--color-magenta)', color: '#000', border: 'none', padding: '4px 14px', fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', fontWeight: 700, cursor: 'pointer' }}>
+            {playing ? '⏸ PAUSE' : frameIdx === 0 ? '▶ SIMULATE' : '▶ RESUME'}
+          </button>
+        ) : (
+          <button onClick={() => reset()} style={{ background: 'transparent', color: 'var(--color-amber-dim)', border: '1px solid var(--color-amber-deep)', padding: '4px 14px', fontSize: 10, fontFamily: 'var(--font-mono)', cursor: 'pointer' }}>↺ RESET</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   9. SecurityLayerDiagram — RSA + SSM + IAM layer view
+───────────────────────────────────────────────────────── */
+
+const SEC_LAYERS = [
+  {
+    label: 'Browser',
+    icon: '🌐',
+    accent: '#7ec8e3',
+    holds: 'RSA public key + plaintext secret (before encryption)',
+    action: 'Encrypts with RSA-OAEP — plaintext never leaves the browser',
+    iam: null as string | null,
+    detail: 'SubtleCrypto.importKey() + SubtleCrypto.encrypt() runs entirely in the browser. The Network tab shows only ciphertext. The server never sees the plaintext.',
+  },
+  {
+    label: 'API Server (internet-facing)',
+    icon: '⚡',
+    accent: 'var(--color-amber)',
+    holds: 'RSA ciphertext in transit · SSM path in the database',
+    action: 'WRITE-ONLY to SSM — cannot read stored secrets',
+    iam: 'ssm:PutParameter' as string | null,
+    detail: "The public-facing role is write-only on SSM. A fully compromised API server still cannot exfiltrate stored credentials — the IAM policy physically prevents the read.",
+  },
+  {
+    label: 'AWS SSM Parameter Store',
+    icon: '🔐',
+    accent: 'var(--color-magenta)',
+    holds: 'Plaintext secret encrypted at rest via KMS (SecureString)',
+    action: 'KMS-encrypted storage — decryptable only by worker role',
+    iam: 'ssm:GetParameter — worker role only' as string | null,
+    detail: 'SecureString parameters are envelope-encrypted by KMS. Only the background worker IAM role has ssm:GetParameter. Your DB holds only the SSM path — never the secret value.',
+  },
+  {
+    label: 'Database',
+    icon: '🗄️',
+    accent: '#7ec87e',
+    holds: 'SSM path pointer only (e.g. /prod/integrations/acme/api_key)',
+    action: 'Stores pointer, not the credential',
+    iam: null as string | null,
+    detail: 'A database breach yields a path string — not a usable credential. The actual value lives in SSM behind KMS + IAM. Rotate the secret in SSM without touching the DB record.',
+  },
+];
+
+export function SecurityLayerDiagram() {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  return (
+    <div style={{ margin: '32px 0', fontFamily: 'var(--font-mono)' }}>
+      {SEC_LAYERS.map((layer, i) => (
+        <div key={i}>
+          <div
+            onClick={() => setExpanded(expanded === i ? null : i)}
+            style={{
+              border: '1px solid var(--color-amber-deep)',
+              borderLeft: `3px solid ${layer.accent}`,
+              background: expanded === i ? `${layer.accent}18` : 'var(--color-bg2)',
+              cursor: 'pointer', transition: 'background 0.18s',
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', padding: 'clamp(10px,2vw,16px) clamp(12px,3vw,20px)', gap: 12 }}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{layer.icon}</span>
+              <div style={{ flex: '1 1 200px' }}>
+                <div style={{ fontSize: 12, color: layer.accent, fontWeight: 700, marginBottom: 3 }}>{layer.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-amber-dim)' }}>{layer.holds}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                {layer.iam && (
+                  <span style={{ fontSize: 9, color: layer.accent, border: `1px solid ${layer.accent}`, padding: '2px 8px', letterSpacing: '0.1em' }}>
+                    {layer.iam}
+                  </span>
+                )}
+                <span style={{ fontSize: 10, color: 'var(--color-amber-dim)' }}>{expanded === i ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            {expanded === i && (
+              <div style={{ borderTop: '1px dashed var(--color-amber-deep)', padding: 'clamp(10px,2vw,14px) clamp(12px,3vw,20px)', background: 'var(--color-bg)' }}>
+                <div style={{ fontSize: 11, color: layer.accent, marginBottom: 6, fontWeight: 600 }}>→ {layer.action}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-amber-dim)', lineHeight: 1.6 }}>{layer.detail}</div>
+              </div>
+            )}
+          </div>
+          {i < SEC_LAYERS.length - 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 22px' }}>
+              <div style={{ width: 1, height: 24, background: 'var(--color-amber-deep)', marginLeft: 10, flexShrink: 0 }} />
+              <span style={{ fontSize: 9, color: 'var(--color-amber-dim)', fontStyle: 'italic', letterSpacing: '0.06em' }}>encrypted hand-off ↓</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   10. FailModeCompare — fail-open vs fail-closed patterns
+───────────────────────────────────────────────────────── */
+
+const FAIL_PATTERNS = [
+  {
+    title: 'Output fields: deny-list vs allow-list',
+    bad:  { label: 'Deny-list (fail open)',  risk: 'A new field you forget to deny gets leaked to callers.',                              code: 'const res = { ...allFields };\ndelete res.internal_id;\n// new field added next sprint → silently leaked' },
+    good: { label: 'Allow-list (fail closed)', safe: 'A field you forget to add gets dropped, never leaked.',                           code: "const res = { id: doc.id, name: doc.name, status: doc.status };\n// forget to map a field → it's dropped, not exposed" },
+  },
+  {
+    title: 'Missing encryption key: silent downgrade vs throw',
+    bad:  { label: 'Fail open',  risk: 'No RSA key configured → silently stores credentials as plaintext in production.',                code: 'if (!process.env.RSA_PUBLIC_KEY) {\n  return storeAsPlaintext(secret); // silent downgrade in prod!\n}' },
+    good: { label: 'Fail closed', safe: 'No RSA key in production → throws immediately. Deploy fails loud.',                            code: "if (!process.env.RSA_PUBLIC_KEY) {\n  if (isProduction()) throw new Error('RSA_PUBLIC_KEY required');\n  return storeAsPlaintext(secret); // local-only escape hatch\n}" },
+  },
+  {
+    title: 'Missing SSM prefix: wrong namespace vs throw',
+    bad:  { label: 'Fail open',  risk: 'Missing env var → silently writes prod secrets to /dev namespace.',                             code: "const prefix = process.env.SSM_PREFIX ?? '/dev/fallback';\n// prod deploy without SSM_PREFIX → secrets land in /dev" },
+    good: { label: 'Fail closed', safe: 'Missing prefix → throws at startup. No silent misfiring.',                                     code: "const prefix = process.env.SSM_PREFIX;\nif (!prefix) throw new Error('SSM_PREFIX is required');\n// no default. Missing = broken = obvious." },
+  },
+  {
+    title: 'Error messages: internals vs safe user copy',
+    bad:  { label: 'Fail open (leaks internals)', risk: 'Raw error in response body. Attacker sees env var names, file paths, stack traces.', code: "res.status(500).json({ error: err.message });\n// 'SSM_PREFIX not set at /app/src/secrets.ts:42'" },
+    good: { label: 'Fail closed', safe: 'Generic copy to user. Full detail to server log only.',                                         code: "console.error('[secrets] config error:', err);\nres.status(500).json({ error: 'Service misconfigured — contact support' });\n// attacker learns nothing. on-call gets everything." },
+  },
+];
+
+export function FailModeCompare() {
+  const [active, setActive] = useState(0);
+  const [side, setSide] = useState<'bad' | 'good'>('bad');
+  const pattern = FAIL_PATTERNS[active];
+  const current = pattern[side];
+  const isBad = side === 'bad';
+
+  return (
+    <div style={{ border: '1px solid var(--color-amber-deep)', margin: '32px 0', fontFamily: 'var(--font-mono)', background: 'var(--color-bg)' }}>
+      <div style={{ background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-amber-deep)', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', minWidth: 'max-content' }}>
+          {FAIL_PATTERNS.map((p, i) => (
+            <button key={i} onClick={() => { setActive(i); setSide('bad'); }} style={{
+              padding: '10px 14px', fontSize: 9, fontFamily: 'var(--font-mono)',
+              background: active === i ? 'var(--color-bg)' : 'transparent',
+              color: active === i ? 'var(--color-amber)' : 'var(--color-amber-dim)',
+              border: 'none', borderBottom: active === i ? '2px solid var(--color-amber)' : '2px solid transparent',
+              cursor: 'pointer', letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+            }}>
+              {String(i + 1).padStart(2, '0')}. {p.title.split(':')[0]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--color-amber-deep)', background: 'var(--color-bg2)' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-amber)', fontWeight: 600 }}>{pattern.title}</span>
+      </div>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-amber-deep)' }}>
+        {(['bad', 'good'] as const).map(s => (
+          <button key={s} onClick={() => setSide(s)} style={{
+            flex: 1, padding: '9px 16px', fontSize: 10, fontFamily: 'var(--font-mono)',
+            background: side === s ? 'var(--color-bg)' : 'var(--color-bg2)',
+            color: side === s ? (s === 'bad' ? 'var(--color-magenta)' : '#7ec87e') : 'var(--color-amber-dim)',
+            border: 'none', borderBottom: side === s ? `2px solid ${s === 'bad' ? 'var(--color-magenta)' : '#7ec87e'}` : '2px solid transparent',
+            cursor: 'pointer', letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>
+            {s === 'bad' ? '✗  Fail Open (dangerous)' : '✓  Fail Closed (safe)'}
+          </button>
+        ))}
+      </div>
+      <div style={{ padding: 'clamp(14px,3vw,20px)' }}>
+        <div style={{
+          padding: '8px 12px', marginBottom: 14,
+          borderLeft: `3px solid ${isBad ? 'var(--color-magenta)' : '#7ec87e'}`,
+          background: isBad ? 'rgba(255,20,99,0.06)' : 'rgba(126,200,126,0.06)',
+          fontSize: 12, color: isBad ? 'var(--color-magenta)' : '#7ec87e',
+        }}>
+          {isBad ? `⚠ Risk: ${'risk' in current ? current.risk : ''}` : `✓ Safe: ${'safe' in current ? current.safe : ''}`}
+        </div>
+        <pre style={{ background: 'var(--color-bg2)', border: '1px solid var(--color-amber-deep)', padding: '12px 14px', fontSize: 11, color: 'var(--color-amber-text)', overflowX: 'auto', margin: 0, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {current.code}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   11. ManifestMapper — field id → internal path demo
+───────────────────────────────────────────────────────── */
+
+const MANIFEST_FIELDS = [
+  { id: 'material_code',    path: 'sub_code',             category: 'Material'  },
+  { id: 'vendor_name',      path: 'assigned_vendor.name', category: 'Vendor'    },
+  { id: 'project_id',       path: 'proj_ref._id',         category: 'Project'   },
+  { id: 'delivery_date',    path: 'sched.eta',            category: 'Schedule'  },
+  { id: 'quantity_ordered', path: 'qty.ordered',          category: 'Quantity'  },
+  { id: 'unit_rate',        path: 'pricing.base_rate',    category: 'Pricing'   },
+];
+
+export function ManifestMapper() {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [renaming, setRenaming] = useState(false);
+
+  const fields = renaming
+    ? MANIFEST_FIELDS.map(f => f.id === 'material_code' ? { ...f, path: 'sub_code_v2' } : f)
+    : MANIFEST_FIELDS;
+
+  return (
+    <div style={{ border: '1px solid var(--color-amber-deep)', margin: '32px 0', fontFamily: 'var(--font-mono)', background: 'var(--color-bg)' }}>
+      <div style={{ background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-amber-deep)', padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{'// field manifest — click a row'}</span>
+        <button onClick={() => { setRenaming(r => !r); setSelected(0); }} style={{
+          fontSize: 9, padding: '3px 10px', fontFamily: 'var(--font-mono)',
+          background: renaming ? 'rgba(126,200,126,0.15)' : 'transparent',
+          color: renaming ? '#7ec87e' : 'var(--color-amber-dim)',
+          border: `1px solid ${renaming ? '#7ec87e' : 'var(--color-amber-deep)'}`,
+          cursor: 'pointer', letterSpacing: '0.08em',
+        }}>
+          {renaming ? '✓ rename applied' : 'simulate DB rename →'}
+        </button>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--color-amber-deep)' }}>
+              {['Public field_id', 'Internal DB path', 'Category'].map(h => (
+                <th key={h} style={{ padding: '8px 14px', textAlign: 'left', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-amber-dim)', fontWeight: 400 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {fields.map((f, i) => (
+              <tr key={f.id} onClick={() => setSelected(selected === i ? null : i)} style={{
+                borderBottom: '1px solid var(--color-amber-deep)',
+                background: selected === i ? 'rgba(217,119,6,0.08)' : 'transparent',
+                cursor: 'pointer', transition: 'background 0.15s',
+              }}>
+                <td style={{ padding: '9px 14px', color: 'var(--color-amber)', fontWeight: 600 }}>{f.id}</td>
+                <td style={{ padding: '9px 14px', color: renaming && f.id === 'material_code' ? '#7ec87e' : 'var(--color-magenta)' }}>
+                  {f.path}
+                  {renaming && f.id === 'material_code' && <span style={{ fontSize: 9, color: '#7ec87e', marginLeft: 8 }}>← renamed</span>}
+                </td>
+                <td style={{ padding: '9px 14px', color: 'var(--color-amber-dim)', fontSize: 10 }}>{f.category}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {selected !== null && (
+        <div style={{ borderTop: '1px solid var(--color-amber-deep)', padding: 'clamp(12px,3vw,18px)', background: 'var(--color-bg2)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ padding: '10px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-amber-deep)' }}>
+              <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>What the partner/user maps</div>
+              <div style={{ fontSize: 13, color: 'var(--color-amber)', fontWeight: 700 }}>{fields[selected].id}</div>
+            </div>
+            <div style={{ padding: '10px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-amber-deep)' }}>
+              <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>What the DB actually accesses</div>
+              <div style={{ fontSize: 13, color: 'var(--color-magenta)', fontWeight: 700 }}>{fields[selected].path}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-amber-dim)', lineHeight: 1.6 }}>
+            The consumer never sees <span style={{ color: 'var(--color-magenta)' }}>{fields[selected].path}</span>.{' '}
+            {renaming && fields[selected].id === 'material_code'
+              ? 'You renamed the DB field — one line changed in the manifest. Every integration still works.'
+              : 'Rename the DB field tomorrow — update one line in the manifest. No consumer breaks.'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   12. URLRiskChecker — SSRF threat model for admin URLs
+───────────────────────────────────────────────────────── */
+
+type RiskLevel = 'BLOCKED' | 'ALLOWED' | 'ALLOWED*';
+
+const URL_PRESETS: { url: string; resolvedIP: string; risk: RiskLevel; reason: string; category: string }[] = [
+  { url: 'http://169.254.169.254/latest/meta-data/', resolvedIP: '169.254.169.254', risk: 'BLOCKED',  reason: 'Cloud metadata endpoint — retrieves IAM credentials and instance tokens', category: 'metadata'    },
+  { url: 'http://localhost:8080/internal/',           resolvedIP: '127.0.0.1',       risk: 'BLOCKED',  reason: 'Loopback — SSRF pivot to services on the same host',                  category: 'loopback'    },
+  { url: 'http://0.0.0.0/api/',                      resolvedIP: '0.0.0.0',         risk: 'BLOCKED',  reason: 'Unspecified address — maps to all local interfaces',                   category: 'loopback'    },
+  { url: 'http://10.0.0.1/admin/',                   resolvedIP: '10.0.0.1',        risk: 'BLOCKED',  reason: 'RFC 1918 private IP — not on the ops-controlled allowlist',            category: 'private'     },
+  { url: 'http://192.168.1.100/erp/',                resolvedIP: '192.168.1.100',   risk: 'ALLOWED*', reason: 'On-prem ERP on LAN — allowed because this specific IP is allowlisted', category: 'allowlisted' },
+  { url: 'https://api.partner-erp.com/v2/',          resolvedIP: '93.184.216.34',   risk: 'ALLOWED',  reason: 'Public hostname on approved allowlist, resolved IP is non-private',    category: 'safe'        },
+];
+
+const RISK_COLOR: Record<RiskLevel, string> = {
+  BLOCKED:   'var(--color-magenta)',
+  ALLOWED:   '#7ec87e',
+  'ALLOWED*':'#ff8c42',
+};
+
+export function URLRiskChecker() {
+  const [selected, setSelected] = useState<number | null>(null);
+
+  return (
+    <div style={{ border: '1px solid var(--color-amber-deep)', margin: '32px 0', fontFamily: 'var(--font-mono)', background: 'var(--color-bg)' }}>
+      <div style={{ background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-amber-deep)', padding: '10px 18px' }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>{'// ssrf risk checker — click a URL to inspect'}</span>
+      </div>
+      {URL_PRESETS.map((preset, i) => (
+        <div key={i} onClick={() => setSelected(selected === i ? null : i)} style={{
+          borderBottom: i < URL_PRESETS.length - 1 ? '1px solid var(--color-amber-deep)' : 'none',
+          cursor: 'pointer', background: selected === i ? `${RISK_COLOR[preset.risk]}11` : 'transparent', transition: 'background 0.15s',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'clamp(9px,2vw,12px) clamp(12px,3vw,18px)', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', flexShrink: 0, color: RISK_COLOR[preset.risk], border: `1px solid ${RISK_COLOR[preset.risk]}`, padding: '2px 8px', minWidth: 72, textAlign: 'center' }}>
+              {preset.risk}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--color-amber-text)', flex: '1 1 200px', wordBreak: 'break-all' }}>{preset.url}</span>
+            <span style={{ fontSize: 10, color: 'var(--color-amber-dim)', flexShrink: 0 }}>{selected === i ? '▲' : '▼'}</span>
+          </div>
+          {selected === i && (
+            <div style={{ padding: 'clamp(10px,2vw,14px) clamp(12px,3vw,18px)', borderTop: '1px dashed var(--color-amber-deep)', background: 'var(--color-bg2)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: 8, marginBottom: 12 }}>
+                <div style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-amber-deep)' }}>
+                  <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>Resolved IP</div>
+                  <div style={{ fontSize: 12, color: RISK_COLOR[preset.risk], fontWeight: 700 }}>{preset.resolvedIP}</div>
+                </div>
+                <div style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-amber-deep)' }}>
+                  <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>Category</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-amber)', fontWeight: 700 }}>{preset.category}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-amber-dim)', lineHeight: 1.6, borderLeft: `3px solid ${RISK_COLOR[preset.risk]}`, paddingLeft: 12 }}>
+                {preset.reason}
+                {preset.risk === 'ALLOWED*' && (
+                  <div style={{ marginTop: 6, color: '#ff8c42', fontSize: 10 }}>
+                    * On-prem exception: RFC 1918 is normally blocked, but this IP is on the ops-controlled allowlist. The allowlist lives in config — an admin cannot self-approve their own endpoint.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      <div style={{ borderTop: '1px solid var(--color-amber-deep)', padding: '8px 16px', display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+        {(['BLOCKED', 'ALLOWED', 'ALLOWED*'] as RiskLevel[]).map(r => (
+          <span key={r} style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.08em' }}>
+            <span style={{ color: RISK_COLOR[r] }}>■</span> {r}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}

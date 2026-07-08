@@ -7,10 +7,10 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { BlogShell } from '@/components/blog/BlogShell';
-import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer } from '@/components/blog/BlogMdxComponents';
+import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer, JobStateVisualizer, SecurityLayerDiagram, FailModeCompare, ManifestMapper, URLRiskChecker } from '@/components/blog/BlogMdxComponents';
 import styles from './blog-post.module.css';
 
-const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer };
+const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer, JobStateVisualizer, SecurityLayerDiagram, FailModeCompare, ManifestMapper, URLRiskChecker };
 
 export async function generateStaticParams() {
   return getAllPosts().map(p => ({ slug: p.slug }));

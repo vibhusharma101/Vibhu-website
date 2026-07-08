@@ -1,0 +1,100 @@
+---
+title: "Calling a URL Your User Controls: SSRF Defense for Admin-Configured Endpoints"
+excerpt: "Your app lets an admin type in a server URL, then sends credentials to it. That's SSRF waiting to happen — even from a trusted admin whose account gets compromised later. Here's how to pin the destination without breaking on-prem setups."
+date: "2026-07-09"
+readTime: "8 min read"
+tags: ["security", "backend", "networking", "ssrf"]
+published: true
+---
+
+There's a feature that shows up in almost every B2B product: an admin pastes in the URL of their own server — an ERP, a webhook receiver, an on-prem API — and your backend starts sending requests to it, often with credentials attached.
+
+It feels safe. The admin is trusted. It's *their* server. What could go wrong?
+
+**Server-Side Request Forgery**, is what. The moment your server makes an outbound request to a URL that came from user input, you've handed a piece of your server's network position to whoever controls that input. And "whoever controls that input" isn't just the well-meaning admin — it's also anyone who later compromises the admin's account, or gains write access to the row where that URL is stored.
+
+---
+
+## The Threat
+
+Your server sits inside a network. It can reach things the public internet can't: cloud metadata endpoints, internal services, other machines on the LAN. An attacker who can set the destination URL can aim your server's requests at any of those.
+
+The classic target is the **cloud metadata endpoint** — `169.254.169.254`. On a default-configured cloud instance, a request there returns the instance's IAM credentials. Point your credential-sending backend at it and you've potentially handed over the keys to the entire cloud account.
+
+Here's a checker showing which destinations should be blocked, which are allowed, and why:
+
+<URLRiskChecker />
+
+Click through the entries. The categories to block: **cloud metadata** (`169.254.169.254`), **loopback** (`127.0.0.1`, `0.0.0.0`), **link-local**, and **reserved ranges**. But notice the orange `ALLOWED*` case — that's where this gets interesting, and I'll come back to it.
+
+---
+
+## Defense 1: Validate the Resolved IP, Not the Hostname
+
+The naive fix is to check the hostname against a blocklist. This does not work, because of **DNS rebinding.**
+
+An attacker registers `evil.com`, points its DNS at a harmless public IP long enough to pass your validation, then — between your check and your actual request — flips the DNS to `169.254.169.254`. Your hostname check saw `evil.com` and approved it. Your HTTP client then resolves it fresh and connects to the metadata endpoint.
+
+The fix is to **resolve the hostname yourself, validate the resulting IP, and connect to that IP** — closing the gap between check and use:
+
+```js
+const { address } = await dns.promises.lookup(hostname);
+if (isBlockedIP(address)) {          // check the IP, not the name
+  throw new Error('Destination IP is not permitted');
+}
+// connect using `address`, not by re-resolving the hostname
+```
+
+Validate what you're *actually going to talk to*, at the last possible moment.
+
+---
+
+## Defense 2: Pin the Destination With an Allowlist
+
+Blocking known-bad ranges is necessary but not sufficient — it's a deny-list, and [deny-lists leak whatever you forget](/blog/fail-closed-not-open). The stronger control is an **egress allowlist**: an ops-controlled list of approved destination hosts. The credential can only ever be sent to a host on that list, *regardless of what the database-stored URL says.*
+
+This is the key insight for the "trusted admin" case. The URL lives in the database, where it can be changed by a compromised admin account or a SQL injection. **The allowlist lives in ops-managed config**, where a compromised admin *can't* reach it. So even if an attacker rewrites the stored URL, they can't add their target to the allowlist — an admin can't self-approve their own endpoint.
+
+You've separated "who can point the integration" (admins, via the DB) from "who can approve a new destination" (ops, via config). That separation is what makes it safe to let admins configure URLs at all.
+
+---
+
+## The On-Prem Nuance (The `ALLOWED*` Case)
+
+Here's what makes this more interesting than a textbook "block all private IPs" rule.
+
+Our customers run **on-prem ERPs**. Those live at RFC 1918 private addresses — `192.168.x.x`, `10.x.x.x` — *by design.* A blanket "block all private IPs" rule would break every single on-prem integration we have.
+
+So the rule can't be "private = blocked." It has to be:
+
+> Private IPs are blocked **by default**, *except* specific addresses an operator has deliberately added to the allowlist.
+
+That's the orange `ALLOWED*` entry in the checker above. `192.168.1.100` is a private IP that would normally be blocked — but it's a customer's ERP that ops explicitly allowlisted. The exception is deliberate, config-controlled, and auditable. It is *not* "we gave up and allow all private IPs."
+
+---
+
+## The Local-Only HTTP Escape Hatch
+
+One more edge. During local development you sometimes need to hit a plain `http://` endpoint — no TLS. We allow that, but **only in local environments**, and it's hard-blocked in anything deployed:
+
+```js
+if (url.protocol === 'http:' && isDeployed()) {
+  throw new Error('Insecure HTTP is not allowed in deployed environments');
+}
+```
+
+Same principle as [failing closed](/blog/fail-closed-not-open): the insecure convenience exists for local dev, but production refuses it outright rather than silently allowing a plaintext credential over the wire.
+
+---
+
+## The Checklist
+
+If your app makes outbound requests to user- or admin-configured URLs:
+
+1. **Block** metadata (`169.254.169.254`), loopback, link-local, and reserved ranges.
+2. **Resolve and validate the IP**, not the hostname — defeat DNS rebinding.
+3. **Pin destinations** with an ops-controlled allowlist that lives outside the database.
+4. **Keep RFC 1918 reachable** *only* via explicit allowlist entries, so on-prem still works without opening the whole private range.
+5. **Hard-block insecure HTTP** in deployed environments.
+
+The "it's a trusted admin's own server" framing is exactly what makes this dangerous — it lowers your guard for an input that is every bit as attacker-reachable as any other. Treat the URL as hostile, pin where the credential can go, and a compromised admin account stays a contained problem instead of a pivot into your whole network.
