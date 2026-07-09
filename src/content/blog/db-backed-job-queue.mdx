@@ -9,9 +9,9 @@ published: true
 
 A user clicks **"Sync now."** They expect it to just work.
 
-Behind that button is a job that talks to a third-party ERP, pulls a few thousand records, transforms them, and writes them back. It takes anywhere from 8 seconds to 4 minutes. And for a while, we ran it right there on the request thread.
+Behind that button is a job that talks to a third-party system, pulls a few thousand records, transforms them, and writes them back. It takes anywhere from 8 seconds to 4 minutes. The naive version runs it right there on the request thread.
 
-Then one afternoon I watched a sync die the instant my dev server hot-reloaded. The row sat in the database, stuck in `RUNNING`, forever. Nobody was coming back to finish it.
+Then one afternoon I watched a job like that die the instant a dev server hot-reloaded. The row sat in the database, stuck in `RUNNING`, forever. Nobody was coming back to finish it.
 
 That stuck row is the whole reason this post exists.
 
@@ -27,9 +27,9 @@ Three problems, in increasing order of how much they'll hurt:
 
 3. **It competes with real traffic.** A CPU-heavy transform on your API box steals cycles from the requests that actually need to be fast.
 
-The instinct is "add a queue." But we didn't have a backend consumer service, the work needed the full app context (dependency injection, models, config), and standing up SQS + a new consumer for one feature felt like bringing a crane to hang a picture frame.
+The instinct is "add a queue." But if you don't already run a backend consumer service, the work needs the full app context (dependency injection, models, config), and standing up SQS + a new consumer for one feature can feel like bringing a crane to hang a picture frame.
 
-So we did the boring, durable thing: **put the queue in the database we already have.**
+So here's the boring, durable alternative: **put the queue in the database you already have.**
 
 ---
 

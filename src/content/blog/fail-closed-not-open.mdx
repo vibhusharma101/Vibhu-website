@@ -1,6 +1,6 @@
 ---
 title: "Fail Closed, Not Open: Security Controls That Break the Safe Way"
-excerpt: "The most dangerous security bug isn't a missing control — it's a control that silently does nothing when misconfigured. Four real before/after examples of designing things to break loudly and safely instead of quietly and dangerously."
+excerpt: "The most dangerous security bug isn't a missing control — it's a control that silently does nothing when misconfigured. Four before/after examples of designing things to break loudly and safely instead of quietly and dangerously."
 date: "2026-07-09"
 readTime: "7 min read"
 tags: ["security", "engineering-practices", "code-review"]
@@ -13,7 +13,7 @@ The code looked defensive. It had a fallback. It handled the edge case gracefull
 
 That's **failing open**: when something goes wrong, the door swings open. The opposite — **failing closed** — means when something goes wrong, the door locks. For security controls, closed is almost always the correct direction.
 
-Here are four patterns, each a real before/after. Toggle between the dangerous and safe versions:
+Here are four patterns, each a before/after. Toggle between the dangerous and safe versions:
 
 <FailModeCompare />
 
@@ -34,7 +34,7 @@ The failure mode of an allow-list is "a field is missing from the output" — an
 
 ---
 
-## 2. The Fail-Open Bug I Caught in Review
+## 2. The Fail-Open Bug That Hides in a Fallback
 
 This is the one from the intro. The logic was:
 
@@ -57,7 +57,7 @@ The principle: a security downgrade should never be *silent*, and never the *def
 
 ## 3. Throw on Missing Config, Don't Default
 
-A close cousin. We had:
+A close cousin. Picture this line:
 
 ```js
 const ssmPrefix = process.env.SSM_PREFIX ?? '/dev/fallback';

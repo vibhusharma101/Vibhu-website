@@ -1621,12 +1621,12 @@ export function FailModeCompare() {
 ───────────────────────────────────────────────────────── */
 
 const MANIFEST_FIELDS = [
-  { id: 'material_code',    path: 'sub_code',             category: 'Material'  },
-  { id: 'vendor_name',      path: 'assigned_vendor.name', category: 'Vendor'    },
-  { id: 'project_id',       path: 'proj_ref._id',         category: 'Project'   },
-  { id: 'delivery_date',    path: 'sched.eta',            category: 'Schedule'  },
-  { id: 'quantity_ordered', path: 'qty.ordered',          category: 'Quantity'  },
-  { id: 'unit_rate',        path: 'pricing.base_rate',    category: 'Pricing'   },
+  { id: 'customer_name', path: 'cust_dn',           category: 'Account'   },
+  { id: 'email_address', path: 'contact.primary',   category: 'Contact'   },
+  { id: 'account_tier',  path: 'billing.plan_code', category: 'Billing'   },
+  { id: 'signup_date',   path: 'meta.created_at',   category: 'Lifecycle' },
+  { id: 'region',        path: 'geo.region_code',   category: 'Location'  },
+  { id: 'status',        path: 'state.current',     category: 'Lifecycle' },
 ];
 
 export function ManifestMapper() {
@@ -1634,7 +1634,7 @@ export function ManifestMapper() {
   const [renaming, setRenaming] = useState(false);
 
   const fields = renaming
-    ? MANIFEST_FIELDS.map(f => f.id === 'material_code' ? { ...f, path: 'sub_code_v2' } : f)
+    ? MANIFEST_FIELDS.map(f => f.id === 'customer_name' ? { ...f, path: 'cust_dn_v2' } : f)
     : MANIFEST_FIELDS;
 
   return (
@@ -1668,9 +1668,9 @@ export function ManifestMapper() {
                 cursor: 'pointer', transition: 'background 0.15s',
               }}>
                 <td style={{ padding: '9px 14px', color: 'var(--color-amber)', fontWeight: 600 }}>{f.id}</td>
-                <td style={{ padding: '9px 14px', color: renaming && f.id === 'material_code' ? '#7ec87e' : 'var(--color-magenta)' }}>
+                <td style={{ padding: '9px 14px', color: renaming && f.id === 'customer_name' ? '#7ec87e' : 'var(--color-magenta)' }}>
                   {f.path}
-                  {renaming && f.id === 'material_code' && <span style={{ fontSize: 9, color: '#7ec87e', marginLeft: 8 }}>← renamed</span>}
+                  {renaming && f.id === 'customer_name' && <span style={{ fontSize: 9, color: '#7ec87e', marginLeft: 8 }}>← renamed</span>}
                 </td>
                 <td style={{ padding: '9px 14px', color: 'var(--color-amber-dim)', fontSize: 10 }}>{f.category}</td>
               </tr>
@@ -1692,7 +1692,7 @@ export function ManifestMapper() {
           </div>
           <div style={{ fontSize: 11, color: 'var(--color-amber-dim)', lineHeight: 1.6 }}>
             The consumer never sees <span style={{ color: 'var(--color-magenta)' }}>{fields[selected].path}</span>.{' '}
-            {renaming && fields[selected].id === 'material_code'
+            {renaming && fields[selected].id === 'customer_name'
               ? 'You renamed the DB field — one line changed in the manifest. Every integration still works.'
               : 'Rename the DB field tomorrow — update one line in the manifest. No consumer breaks.'}
           </div>
@@ -1714,8 +1714,8 @@ const URL_PRESETS: { url: string; resolvedIP: string; risk: RiskLevel; reason: s
   { url: 'http://localhost:8080/internal/',           resolvedIP: '127.0.0.1',       risk: 'BLOCKED',  reason: 'Loopback — SSRF pivot to services on the same host',                  category: 'loopback'    },
   { url: 'http://0.0.0.0/api/',                      resolvedIP: '0.0.0.0',         risk: 'BLOCKED',  reason: 'Unspecified address — maps to all local interfaces',                   category: 'loopback'    },
   { url: 'http://10.0.0.1/admin/',                   resolvedIP: '10.0.0.1',        risk: 'BLOCKED',  reason: 'RFC 1918 private IP — not on the ops-controlled allowlist',            category: 'private'     },
-  { url: 'http://192.168.1.100/erp/',                resolvedIP: '192.168.1.100',   risk: 'ALLOWED*', reason: 'On-prem ERP on LAN — allowed because this specific IP is allowlisted', category: 'allowlisted' },
-  { url: 'https://api.partner-erp.com/v2/',          resolvedIP: '93.184.216.34',   risk: 'ALLOWED',  reason: 'Public hostname on approved allowlist, resolved IP is non-private',    category: 'safe'        },
+  { url: 'http://192.168.1.100/internal/',           resolvedIP: '192.168.1.100',   risk: 'ALLOWED*', reason: 'On-prem service on LAN — allowed because this specific IP is allowlisted', category: 'allowlisted' },
+  { url: 'https://api.partner.com/v2/',              resolvedIP: '93.184.216.34',   risk: 'ALLOWED',  reason: 'Public hostname on approved allowlist, resolved IP is non-private',    category: 'safe'        },
 ];
 
 const RISK_COLOR: Record<RiskLevel, string> = {

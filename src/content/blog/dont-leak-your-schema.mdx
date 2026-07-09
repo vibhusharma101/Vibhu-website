@@ -1,15 +1,15 @@
 ---
 title: "Don't Leak Your Database Schema: The Manifest Pattern for Integrations"
-excerpt: "Your DB calls a field sub_code. Your integration partner and your UI should never see that name. Here's how a tiny translation table decouples your storage from your public contract — and lets you rename columns without breaking a single consumer."
+excerpt: "Your DB calls a field cust_dn. Your integration partner and your UI should never see that name. Here's how a tiny translation table decouples your storage from your public contract — and lets you rename columns without breaking a single consumer."
 date: "2026-07-09"
 readTime: "7 min read"
 tags: ["architecture", "integrations", "api-design", "databases"]
 published: true
 ---
 
-Somewhere in our database is a field called `sub_code`. It's a fine name internally. It is also a name that our integration partners, our frontend, and our error messages should **never, ever see.**
+Imagine a field in your database called `cust_dn`. It's a fine name internally. It is also a name that your integration partners, your frontend, and your error messages should **never, ever see.**
 
-Because the day we expose `sub_code` to the outside world is the day we can never rename it. Every consumer hardcodes it. It becomes load-bearing legacy the moment it leaks. And "we can't rename this database column because a partner's integration depends on the name" is a genuinely miserable place to end up.
+Because the day you expose `cust_dn` to the outside world is the day you can never rename it. Every consumer hardcodes it. It becomes load-bearing legacy the moment it leaks. And "we can't rename this database column because a partner's integration depends on the name" is a genuinely miserable place to end up.
 
 The fix is small: a translation layer between what you store and what you expose. I call it the **manifest pattern.**
 
@@ -19,8 +19,8 @@ The fix is small: a translation layer between what you store and what you expose
 
 Every field gets two names:
 
-- A **public id** — stable, meaningful, what consumers actually use. `material_code`.
-- A **physical path** — where the value actually lives in your document. `sub_code`.
+- A **public id** — stable, meaningful, what consumers actually use. `customer_name`.
+- A **physical path** — where the value actually lives in your document. `cust_dn`.
 
 Consumers only ever touch the public id. The physical path is a private implementation detail.
 
@@ -40,23 +40,23 @@ The public id is the contact name. The physical path is the phone number. The ma
 
 ### 1. Stability — rename freely
 
-This is the headline. Rename `sub_code` to `sub_code_v2` in the database, change **one line** in the manifest, and every consumer keeps working. They were never coupled to the physical name — they were coupled to `material_code`, which didn't move.
+This is the headline. Rename `cust_dn` to `cust_dn_v2` in the database, change **one line** in the manifest, and every consumer keeps working. They were never coupled to the physical name — they were coupled to `customer_name`, which didn't move.
 
 ```js
 const MANIFEST = {
-  material_code:    'sub_code_v2',          // ← only this line changed
-  vendor_name:      'assigned_vendor.name',
-  delivery_date:    'sched.eta',
+  customer_name:  'cust_dn_v2',          // ← only this line changed
+  account_tier:   'billing.plan_code',
+  signup_date:    'meta.created_at',
 };
 ```
 
 ### 2. Security — never expose internals
 
-The frontend, the partner API, and your error messages only ever see `material_code`. Your actual schema — table shapes, nested document structure, naming conventions — stays private. Leaking `assigned_vendor.name` in an API response tells an attacker how your documents are shaped. Leaking `material_code` tells them nothing.
+The frontend, the partner API, and your error messages only ever see `customer_name`. Your actual schema — table shapes, nested document structure, naming conventions — stays private. Leaking `billing.plan_code` in an API response tells an attacker how your documents are shaped. Leaking `customer_name` tells them nothing.
 
 ### 3. Abstraction — users map logical fields
 
-When a partner configures their integration, they map *their* fields to *your logical fields* — `material_code`, `delivery_date` — not to `sub_code` and `sched.eta`. They're working with a clean domain vocabulary, not spelunking through your storage layout.
+When a partner configures their integration, they map *their* fields to *your logical fields* — `customer_name`, `account_tier` — not to `cust_dn` and `billing.plan_code`. They're working with a clean domain vocabulary, not spelunking through your storage layout.
 
 ---
 
@@ -68,15 +68,15 @@ The manifest is just a `Map` from public id to physical path. To read a value, l
 import get from 'lodash.get';
 
 function readField(doc, publicId) {
-  const path = MANIFEST[publicId];          // 'assigned_vendor.name'
+  const path = MANIFEST[publicId];          // 'billing.plan_code'
   if (!path) throw new Error(`Unknown field: ${publicId}`);
   return get(doc, path);                    // safely walks the nested path
 }
 
-readField(order, 'vendor_name'); // → order.assigned_vendor.name
+readField(account, 'account_tier'); // → account.billing.plan_code
 ```
 
-That `get` matters: physical paths are often nested (`assigned_vendor.name`, `sched.eta`), and a naive `doc[path]` won't traverse them. The getter handles dotted paths and returns `undefined` instead of throwing on a missing intermediate object.
+That `get` matters: physical paths are often nested (`billing.plan_code`, `meta.created_at`), and a naive `doc[path]` won't traverse them. The getter handles dotted paths and returns `undefined` instead of throwing on a missing intermediate object.
 
 ---
 

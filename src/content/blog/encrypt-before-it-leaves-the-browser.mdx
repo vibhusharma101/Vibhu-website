@@ -15,7 +15,7 @@ Not really. TLS protects the credential *in transit*. But that same plaintext se
 - Your **server logs**, if any middleware logs request bodies
 - Your **database**, in whatever field you stored it
 
-TLS is one layer. For a credential that unlocks someone else's system, one layer isn't enough. Here's the defense-in-depth version we built.
+TLS is one layer. For a credential that unlocks someone else's system, one layer isn't enough. Here's a defense-in-depth approach worth reaching for.
 
 ---
 
@@ -86,7 +86,7 @@ That's the difference between a bad day and a company-ending breach.
 
 ## Key Rotation Without Downtime
 
-One RSA keypair forever is a liability. We use a small **keypair registry** so keys can rotate:
+One RSA keypair forever is a liability. A small **keypair registry** lets keys rotate:
 
 - Each key has a `key_id`
 - There's a designated **current** key, served to browsers for new encryptions
@@ -123,6 +123,6 @@ The public key gets served to browsers. The private key goes into a SecureString
 
 ## Is This Overkill?
 
-For a low-stakes internal tool? Maybe. For **credentials that unlock a customer's ERP, payment processor, or cloud account?** No. This is proportionate.
+For a low-stakes internal tool? Maybe. For **credentials that unlock a customer's system, payment processor, or cloud account?** No. This is proportionate.
 
 The threat model isn't "someone sniffs the wire" — TLS handles that. The threat model is "someone gets into my systems and I don't want that to mean every stored credential is instantly theirs." Each layer here — browser-side encryption, SSM+KMS, the IAM read/write split — assumes the layer in front of it has already failed. That's what defense-in-depth actually means: not one strong wall, but walls that hold even after the one before them falls.

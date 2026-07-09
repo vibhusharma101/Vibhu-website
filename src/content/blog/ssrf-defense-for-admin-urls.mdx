@@ -63,13 +63,13 @@ You've separated "who can point the integration" (admins, via the DB) from "who 
 
 Here's what makes this more interesting than a textbook "block all private IPs" rule.
 
-Our customers run **on-prem ERPs**. Those live at RFC 1918 private addresses — `192.168.x.x`, `10.x.x.x` — *by design.* A blanket "block all private IPs" rule would break every single on-prem integration we have.
+Plenty of enterprise customers run **on-prem services** — an internal API, an ERP, a legacy system. Those live at RFC 1918 private addresses — `192.168.x.x`, `10.x.x.x` — *by design.* A blanket "block all private IPs" rule would break every on-prem integration.
 
 So the rule can't be "private = blocked." It has to be:
 
 > Private IPs are blocked **by default**, *except* specific addresses an operator has deliberately added to the allowlist.
 
-That's the orange `ALLOWED*` entry in the checker above. `192.168.1.100` is a private IP that would normally be blocked — but it's a customer's ERP that ops explicitly allowlisted. The exception is deliberate, config-controlled, and auditable. It is *not* "we gave up and allow all private IPs."
+That's the orange `ALLOWED*` entry in the checker above. `192.168.1.100` is a private IP that would normally be blocked — but it's an on-prem service that ops explicitly allowlisted. The exception is deliberate, config-controlled, and auditable. It is *not* "we gave up and allow all private IPs."
 
 ---
 
