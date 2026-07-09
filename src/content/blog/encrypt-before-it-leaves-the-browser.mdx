@@ -51,7 +51,12 @@ Now the Network tab shows ciphertext. Your request-logging middleware logs ciphe
 The API server holds the **RSA private key** and decrypts the incoming ciphertext. But it does *not* store the plaintext in your database. It writes it to **AWS SSM Parameter Store as a SecureString** — which KMS-encrypts it at rest — and stores only the *SSM path* in your own DB.
 
 ```js
-const plaintext = privateDecrypt(rsaPrivateKey, ciphertext);
+// oaepHash MUST match the browser's OAEP hash (SHA-256) — Node
+// defaults to SHA-1, which would silently fail to decrypt.
+const plaintext = privateDecrypt(
+  { key: rsaPrivateKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+  ciphertext,
+);
 await ssm.putParameter({
   Name: `/prod/integrations/${orgId}/api_key`,
   Value: plaintext.toString(),
