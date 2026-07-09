@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { BlogPost } from '@/types/blog';
 import s from './panels.module.css';
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 6;
 
 interface Props {
   posts: BlogPost[];
@@ -34,81 +34,63 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
     );
   }
 
-  const [featured, ...rest] = posts;
-  const totalPages = Math.ceil(rest.length / PAGE_SIZE);
-  const pageItems = rest.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.ceil(posts.length / PAGE_SIZE);
+  const pageItems = posts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <div className={s.blogGrid}>
       <div className={s.blogGridHeader}>
         <span className={s.blogComingSoonLabel}>{'// blog.md'}</span>
+        <span className={s.blogPostCount}>{posts.length} posts</span>
       </div>
 
-      <div className={s.blogGridMain}>
-        {/* ── Featured post ── */}
-        <button
-          type="button"
-          className={s.blogFeatured}
-          onClick={() => onSelectPost(featured.slug)}
-        >
-          <span className={s.blogFeaturedLabel}>LATEST POST</span>
-          <h2 className={s.blogFeaturedTitle}>{featured.title}</h2>
-          <p className={s.blogFeaturedExcerpt}>{featured.excerpt}</p>
-          <div className={s.blogFeaturedMeta}>
-            <time>{featured.date}</time>
-            <span>·</span>
-            <span>{featured.readTime}</span>
-            {featured.tags.map(tag => (
-              <span key={tag} className={s.blogTag}>{tag}</span>
-            ))}
-          </div>
-          <span className={s.blogFeaturedCta}>→ read post</span>
-        </button>
-
-        {/* ── Side list ── */}
-        {rest.length > 0 && (
-          <aside className={s.blogSideList}>
-            <div className={s.blogSideHeader}>MORE POSTS</div>
-            <div className={s.blogSideItems}>
-              {pageItems.map(post => (
-                <button
-                  key={post.slug}
-                  type="button"
-                  className={s.blogSideItem}
-                  onClick={() => onSelectPost(post.slug)}
-                  style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: 'none' }}
-                >
-                  <div className={s.blogSideItemInner}>
-                    <span className={s.blogSideDot} />
-                    <div>
-                      <p className={s.blogSideTitle}>{post.title}</p>
-                      <p className={s.blogSideExcerpt}>{post.excerpt}</p>
-                      <span className={s.blogSideMeta}>{post.date} · {post.readTime}</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {totalPages > 1 && (
-              <div className={s.blogPagination}>
-                <button
-                  className={s.blogPaginationBtn}
-                  disabled={page === 0}
-                  onClick={() => setPage(p => p - 1)}
-                >
-                  ‹ prev
-                </button>
-                <span className={s.blogPaginationIndicator}>{page + 1} / {totalPages}</span>
-                <button
-                  className={s.blogPaginationBtn}
-                  disabled={page === totalPages - 1}
-                  onClick={() => setPage(p => p + 1)}
-                >
-                  next ›
-                </button>
+      <div className={s.blogScrollArea}>
+        <div className={s.blogTileGrid}>
+          {pageItems.map((post, i) => (
+            <button
+              key={post.slug}
+              type="button"
+              className={`${s.blogTile}${i === 0 && page === 0 ? ` ${s.blogTileLatest}` : ''}`}
+              onClick={() => onSelectPost(post.slug)}
+            >
+              <div className={s.blogTileTop}>
+                <span className={s.blogTileReadTime}>{post.readTime}</span>
+                <div className={s.blogTileTagRow}>
+                  {post.tags.slice(0, 2).map(tag => (
+                    <span key={tag} className={s.blogTileTag}>{tag}</span>
+                  ))}
+                </div>
               </div>
-            )}
-          </aside>
+
+              <h2 className={s.blogTileTitle}>{post.title}</h2>
+              <p className={s.blogTileExcerpt}>{post.excerpt}</p>
+
+              <div className={s.blogTileMeta}>
+                <time dateTime={post.date}>{post.date}</time>
+                <span className={s.blogTileCta}>→ read</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {totalPages > 1 && (
+          <div className={s.blogPagination}>
+            <button
+              className={s.blogPaginationBtn}
+              disabled={page === 0}
+              onClick={() => setPage(p => p - 1)}
+            >
+              ‹ prev
+            </button>
+            <span className={s.blogPaginationIndicator}>{page + 1} / {totalPages}</span>
+            <button
+              className={s.blogPaginationBtn}
+              disabled={page === totalPages - 1}
+              onClick={() => setPage(p => p + 1)}
+            >
+              next ›
+            </button>
+          </div>
         )}
       </div>
     </div>
