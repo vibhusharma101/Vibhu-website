@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BlogPost } from '@/types/blog';
 import s from './panels.module.css';
 
-const PAGE_SIZE = 6;
+const INITIAL = 6;
+const BATCH   = 6;
 
 interface Props {
   posts: BlogPost[];
@@ -12,7 +13,21 @@ interface Props {
 }
 
 export function BlogListPanel({ posts, onSelectPost }: Props) {
-  const [page, setPage] = useState(0);
+  const [visible, setVisible] = useState(INITIAL);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(v => Math.min(v + BATCH, posts.length));
+      },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [posts.length]);
 
   if (posts.length === 0) {
     return (
@@ -34,65 +49,88 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
     );
   }
 
-  const totalPages = Math.ceil(posts.length / PAGE_SIZE);
-  const pageItems = posts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const [featured, ...rest] = posts;
+  const visibleRest = rest.slice(0, Math.max(0, visible - 1));
+  const hasMore = visible < posts.length;
 
   return (
     <div className={s.blogGrid}>
+      {/* Sticky header */}
       <div className={s.blogGridHeader}>
         <span className={s.blogComingSoonLabel}>{'// blog.md'}</span>
         <span className={s.blogPostCount}>{posts.length} posts</span>
       </div>
 
-      <div className={s.blogScrollArea}>
-        <div className={s.blogTileGrid}>
-          {pageItems.map((post, i) => (
-            <button
-              key={post.slug}
-              type="button"
-              className={`${s.blogTile}${i === 0 && page === 0 ? ` ${s.blogTileLatest}` : ''}`}
-              onClick={() => onSelectPost(post.slug)}
-            >
-              <div className={s.blogTileTop}>
-                <span className={s.blogTileReadTime}>{post.readTime}</span>
-                <div className={s.blogTileTagRow}>
-                  {post.tags.slice(0, 2).map(tag => (
-                    <span key={tag} className={s.blogTileTag}>{tag}</span>
-                  ))}
-                </div>
-              </div>
-
-              <h2 className={s.blogTileTitle}>{post.title}</h2>
-              <p className={s.blogTileExcerpt}>{post.excerpt}</p>
-
-              <div className={s.blogTileMeta}>
-                <time dateTime={post.date}>{post.date}</time>
-                <span className={s.blogTileCta}>→ read</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {totalPages > 1 && (
-          <div className={s.blogPagination}>
-            <button
-              className={s.blogPaginationBtn}
-              disabled={page === 0}
-              onClick={() => setPage(p => p - 1)}
-            >
-              ‹ prev
-            </button>
-            <span className={s.blogPaginationIndicator}>{page + 1} / {totalPages}</span>
-            <button
-              className={s.blogPaginationBtn}
-              disabled={page === totalPages - 1}
-              onClick={() => setPage(p => p + 1)}
-            >
-              next ›
-            </button>
+      {/* Featured — latest post, full width */}
+      <button
+        type="button"
+        className={s.blogFeaturedStrip}
+        onClick={() => onSelectPost(featured.slug)}
+      >
+        <div className={s.blogFeaturedStripInner}>
+          <div className={s.blogFeaturedStripLeft}>
+            <span className={s.blogFeaturedLabel}>LATEST POST</span>
+            <h2 className={s.blogFeaturedStripTitle}>{featured.title}</h2>
+            <p className={s.blogFeaturedStripExcerpt}>{featured.excerpt}</p>
           </div>
-        )}
-      </div>
+          <div className={s.blogFeaturedStripRight}>
+            <div className={s.blogFeaturedStripMeta}>
+              <time dateTime={featured.date}>{featured.date}</time>
+              <span>·</span>
+              <span>{featured.readTime}</span>
+            </div>
+            <div className={s.blogTileTagRow}>
+              {featured.tags.slice(0, 3).map(tag => (
+                <span key={tag} className={s.blogTileTag}>{tag}</span>
+              ))}
+            </div>
+            <span className={s.blogFeaturedStripCta}>→ read post</span>
+          </div>
+        </div>
+      </button>
+
+      {/* Tile grid — all remaining visible posts */}
+      {visibleRest.length > 0 && (
+        <div className={s.blogTileGridWrap}>
+          <div className={s.blogTileGrid}>
+            {visibleRest.map(post => (
+              <button
+                key={post.slug}
+                type="button"
+                className={s.blogTile}
+                onClick={() => onSelectPost(post.slug)}
+              >
+                <div className={s.blogTileTop}>
+                  <span className={s.blogTileReadTime}>{post.readTime}</span>
+                  <div className={s.blogTileTagRow}>
+                    {post.tags.slice(0, 2).map(tag => (
+                      <span key={tag} className={s.blogTileTag}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <h3 className={s.blogTileTitle}>{post.title}</h3>
+                <p className={s.blogTileExcerpt}>{post.excerpt}</p>
+                <div className={s.blogTileMeta}>
+                  <time dateTime={post.date}>{post.date}</time>
+                  <span className={s.blogTileCta}>→ read</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Infinite scroll sentinel */}
+      {hasMore && (
+        <div ref={sentinelRef} className={s.blogInfiniteLoader}>
+          <span className={s.blogLoadingDot} />
+          <span className={s.blogLoadingDot} />
+          <span className={s.blogLoadingDot} />
+        </div>
+      )}
+
+      {/* Bottom spacer so chat button doesn't cover last card */}
+      <div style={{ height: 80, flexShrink: 0 }} />
     </div>
   );
 }
