@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { BlogPost } from '@/types/blog';
 import s from './panels.module.css';
 
-const INITIAL = 6;
-const BATCH   = 6;
+const PAGE_SIZE = 6;
 
 interface Props {
   posts: BlogPost[];
@@ -13,7 +12,7 @@ interface Props {
 }
 
 export function BlogListPanel({ posts, onSelectPost }: Props) {
-  const [visible, setVisible] = useState(INITIAL);
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,7 +20,7 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setVisible(v => Math.min(v + BATCH, posts.length));
+        if (entry.isIntersecting) setVisible(v => Math.min(v + PAGE_SIZE, posts.length));
       },
       { threshold: 0.1 }
     );
@@ -50,7 +49,7 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
   }
 
   const [featured, ...rest] = posts;
-  const visibleRest = rest.slice(0, Math.max(0, visible - 1));
+  const visibleRest = rest.slice(0, visible - 1);
   const hasMore = visible < posts.length;
 
   return (
@@ -91,32 +90,30 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
 
       {/* Tile grid — all remaining visible posts */}
       {visibleRest.length > 0 && (
-        <div className={s.blogTileGridWrap}>
-          <div className={s.blogTileGrid}>
-            {visibleRest.map(post => (
-              <button
-                key={post.slug}
-                type="button"
-                className={s.blogTile}
-                onClick={() => onSelectPost(post.slug)}
-              >
-                <div className={s.blogTileTop}>
-                  <span className={s.blogTileReadTime}>{post.readTime}</span>
-                  <div className={s.blogTileTagRow}>
-                    {post.tags.slice(0, 2).map(tag => (
-                      <span key={tag} className={s.blogTileTag}>{tag}</span>
-                    ))}
-                  </div>
+        <div className={s.blogTileGrid}>
+          {visibleRest.map(post => (
+            <button
+              key={post.slug}
+              type="button"
+              className={s.blogTile}
+              onClick={() => onSelectPost(post.slug)}
+            >
+              <div className={s.blogTileTop}>
+                <span className={s.blogTileReadTime}>{post.readTime}</span>
+                <div className={s.blogTileTagRow}>
+                  {post.tags.slice(0, 2).map(tag => (
+                    <span key={tag} className={s.blogTileTag}>{tag}</span>
+                  ))}
                 </div>
-                <h3 className={s.blogTileTitle}>{post.title}</h3>
-                <p className={s.blogTileExcerpt}>{post.excerpt}</p>
-                <div className={s.blogTileMeta}>
-                  <time dateTime={post.date}>{post.date}</time>
-                  <span className={s.blogTileCta}>→ read</span>
-                </div>
-              </button>
-            ))}
-          </div>
+              </div>
+              <h3 className={s.blogTileTitle}>{post.title}</h3>
+              <p className={s.blogTileExcerpt}>{post.excerpt}</p>
+              <div className={s.blogTileMeta}>
+                <time dateTime={post.date}>{post.date}</time>
+                <span className={s.blogTileCta}>→ read</span>
+              </div>
+            </button>
+          ))}
         </div>
       )}
 

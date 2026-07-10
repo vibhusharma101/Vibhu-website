@@ -139,11 +139,6 @@
 
 .blogFeaturedStrip:hover .blogFeaturedStripCta { opacity: 1; }
 
-/* ── Tile grid wrapper ── */
-.blogTileGridWrap {
-  padding: 0;
-}
-
 /* Tile grid — 3 col desktop */
 .blogTileGrid {
   display: grid;
