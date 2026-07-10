@@ -1,0 +1,136 @@
+---
+title: "Run It Off the API Server: A DB-Backed Job Queue for On-Demand Work"
+excerpt: "A user clicks 'Sync now' and expects it to just work — but the job runs for minutes and hammers an external system. Running that on your API server is a trap. Here's how to move it to a background worker without reaching for a new queue service."
+date: "2026-07-09"
+readTime: "10 min read"
+tags: ["backend", "systems-design", "databases", "architecture"]
+published: true
+---
+
+A user clicks **"Sync now."** They expect it to just work.
+
+Behind that button is a job that talks to a third-party system, pulls a few thousand records, transforms them, and writes them back. It takes anywhere from 8 seconds to 4 minutes. The naive version runs it right there on the request thread.
+
+Then one afternoon I watched a job like that die the instant a dev server hot-reloaded. The row sat in the database, stuck in `RUNNING`, forever. Nobody was coming back to finish it.
+
+That stuck row is the whole reason this post exists.
+
+---
+
+## Why Not Just Run It on the API Server?
+
+Three problems, in increasing order of how much they'll hurt:
+
+1. **It blocks the request.** A 4-minute HTTP request is a 4-minute-long held connection, a timeout waiting to happen, and a terrible UX. The user's browser spinner just sits there.
+
+2. **A deploy kills it mid-run.** Every deploy, every `nodemon` reload, every pod recycle terminates whatever was running. Long jobs on the API server are guaranteed to be interrupted eventually — you're just waiting to find out when.
+
+3. **It competes with real traffic.** A CPU-heavy transform on your API box steals cycles from the requests that actually need to be fast.
+
+The instinct is "add a queue." But if you don't already run a backend consumer service, the work needs the full app context (dependency injection, models, config), and standing up SQS + a new consumer for one feature can feel like bringing a crane to hang a picture frame.
+
+So here's the boring, durable alternative: **put the queue in the database you already have.**
+
+---
+
+## The Pattern: Enqueue → Atomically Claim → Finalize
+
+The whole design is three states and one atomic operation.
+
+<JobStateVisualizer />
+
+**Enqueue.** The API does almost nothing. It inserts a row with status `PENDING` and returns immediately. The user gets an instant response: "Sync queued."
+
+**Claim.** A separate worker process — not the API server — runs a cron tick every few seconds. On each tick it tries to grab one pending job. This is the part that has to be exactly right:
+
+```js
+// The atomic claim: find a PENDING job and flip it to RUNNING
+// in ONE operation. No read-then-write race.
+const job = await Job.findOneAndUpdate(
+  { status: 'PENDING' },
+  { $set: { status: 'RUNNING', claimedBy: workerId, claimedAt: new Date() } },
+  { sort: { createdAt: 1 }, new: true }   // oldest first (FIFO)
+);
+if (!job) return; // nothing to do this tick
+```
+
+The single `findOneAndUpdate` is the load-bearing wall. If you `find()` a pending job and *then* `update()` it in two steps, two workers can read the same row before either writes — and now the job runs twice. One atomic operation makes the claim a race no worker can lose twice.
+
+**Finalize.** The worker runs the job and writes a terminal status — `DONE` or `FAILED` — with whatever result summary you want to show the user.
+
+---
+
+## The Hard Parts (Where the Bugs Actually Live)
+
+The happy path is easy. Here's what took real thought.
+
+### Dedup: the double-click problem
+
+A user clicks "Sync," nothing visibly happens for a second, so they click again. Now you have two identical jobs. The fix is to coalesce at enqueue time — before inserting, check for an existing non-terminal run for the same target:
+
+```js
+const existing = await Job.findOne({
+  targetId,
+  status: { $in: ['PENDING', 'RUNNING'] },
+});
+if (existing) return existing; // ride the in-flight run
+```
+
+Switch to the **Dedup** tab in the demo above to see this — the second click finds the in-flight run and drops, instead of spawning a duplicate.
+
+### Stale-run recovery: the stuck-forever problem
+
+This is the bug that started it all. A worker claims a job, flips it to `RUNNING`, then dies — crash, deploy, OOM kill. The row is now `RUNNING` with nobody running it. It will sit there until the heat death of the universe.
+
+The fix is a recovery sweep on the same cron tick: any job that's been `RUNNING` longer than a threshold gets reaped.
+
+```js
+// Reap zombies: claimed too long ago, still not finished.
+const STALE_MS = 15 * 60 * 1000; // 15 minutes
+await Job.updateMany(
+  { status: 'RUNNING', claimedAt: { $lt: new Date(Date.now() - STALE_MS) } },
+  { $set: { status: 'FAILED', error: 'stale — worker did not finish in time' } }
+);
+```
+
+The **Stale recovery** tab in the demo walks the full lifecycle: worker dies → next tick detects it → `FAILED` → re-enqueued → picked up by a healthy worker.
+
+### The honest failure-mode table
+
+No design is bulletproof. Being explicit about where it *can* still break is the difference between a system you trust and one that surprises you at 2am:
+
+| Failure | What happens | Mitigation |
+|---|---|---|
+| Worker permanently down | Nothing gets claimed; jobs pile up in `PENDING` | Alert on queue depth + worker heartbeat |
+| Job legitimately longer than the stale window | Recovery sweep kills a *healthy* job mid-run | Tune the threshold above your P99 runtime; or heartbeat `claimedAt` |
+| Per-item detail row fails with no retry | Parent job is `DONE` but some records never synced | Track detail-level status separately (next section) |
+
+That middle row is the sharp edge: set `STALE_MS` too low and you murder jobs that were doing fine. Set it too high and zombies linger. There's no free lunch — you're picking a number, so pick it above your slowest legitimate run.
+
+---
+
+## Bonus: DB-Driven Cron Scheduling
+
+Once the queue lives in the DB, it's a small step to make the *schedule* live there too. Instead of hardcoding cron expressions, the job server reads an env map plus an `ACTIVE` job record on startup and self-registers:
+
+```js
+// On boot: register every ACTIVE job from the DB.
+const activeJobs = await JobDefinition.find({ status: 'ACTIVE' });
+for (const def of activeJobs) {
+  cron.schedule(def.schedule, () => runJob(def.name));
+}
+```
+
+Now ops enables a new scheduled job by adding one row and restarting the worker — no code deploy. The schedule is data, not code.
+
+---
+
+## When This Pattern Fits (And When It Doesn't)
+
+**Use it when:** you have on-demand or scheduled background work, you already run a database, the job volume is modest (dozens to low-thousands per hour), and the work needs your full app context.
+
+**Reach for a real queue (SQS, BullMQ, Temporal) when:** you need very high throughput, fan-out to many consumers, complex retry/backoff semantics, or exactly-once delivery guarantees that a polling loop can't cheaply provide.
+
+For a lot of products, though, "the queue is a table" is the right amount of infrastructure. It's durable, it survives deploys, it's debuggable with a plain DB query, and it doesn't add a single new moving part to your stack.
+
+The stuck-`RUNNING` row that started this? It can't happen anymore. The next tick would reap it.
