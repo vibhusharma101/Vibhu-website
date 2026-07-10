@@ -297,3 +297,54 @@ Note: Geist is available via `next/font/google` or install `geist` npm package. 
 - Heading hierarchy: one H1 (hero name), H2 per section, H3 for sub-items
 - `alt` text on all images
 - `aria-label` on icon-only buttons (social links, chat toggle)
+
+---
+
+## Design Perspective — Blog Tile Grid Redesign
+
+_Added by /vii-plan-design on 2026-07-10. Task: replace featured+sidebar layout with equal-weight tile grid; fix chat popover overlap._
+
+### User flow
+1. User lands on blog panel (sidebar tab "blog.md" or `/blog` route — both use `BlogListPanel`)
+2. Sees a header bar (`// blog.md`) then a scrollable 3-column tile grid of all posts
+3. Hovers a tile — border accent + subtle bg shift
+4. Clicks tile — navigates to post reading pane (existing `onSelectPost` callback, unchanged)
+5. If > PAGE_SIZE posts: prev/next pagination appears below the grid, scrolls into view
+6. Branch — 0 posts: existing "Coming Soon" empty state (unchanged)
+7. Branch — mobile (≤640px): 1-column stack, tiles flow vertically, scroll works
+8. Branch — tablet (640–1024px): 2-column grid
+
+### Component inventory
+| Surface | Existing component | Action needed |
+|---|---|---|
+| Blog list panel | `BlogListPanel.tsx` | Rewrite layout: remove featured+sidebar, add tile grid |
+| Tile card | none | New `.blogTile` — extend existing `panels.module.css` pattern |
+| Tile grid wrapper | none | New `.blogScrollArea` + `.blogTileGrid` CSS classes |
+| Pagination bar | `.blogPagination` (just added) | Move into scroll area so it scrolls with tiles; add `pb-80px` buffer |
+| Chat popover affix | `ChatPopover` / Mantine `Affix` | Add bottom offset on mobile so it doesn't overlap last tile row |
+| Blog grid header | `.blogGridHeader` (reuse) | No change |
+| Empty state | `.blogComingSoon` (reuse) | No change |
+
+### Interaction states
+| Element | States to design |
+|---|---|
+| `.blogTile` card | idle (amber-deep border, bg2 bg), hover (magenta border, amber-sub bg, cursor pointer), focus-visible (amber outline 2px), active (slight translate), disabled — n/a |
+| `.blogTile` (first/latest) | idle has `border-bottom: 2px solid magenta` as "LATEST" indicator |
+| Pagination prev/next | idle, hover (amber), disabled (opacity 0.35, cursor not-allowed) — already implemented |
+| Empty state | static — no interaction |
+
+### Accessibility notes
+- Each `.blogTile` is a `<button>` — keyboard reachable, Enter/Space activates. No change from existing pattern.
+- `<h2>` inside each tile for post title — maintains heading hierarchy within panel
+- Tags are decorative `<span>` elements — no role change needed
+- Focus ring: use `outline: 2px solid var(--color-amber)` on `:focus-visible` for dark-bg visibility
+- Time element: use `<time dateTime={post.date}>` for semantic date
+
+### Design system fit
+- All tokens already exist: `--color-amber-deep` (border), `--color-amber-sub` (hover bg), `--color-magenta` (accent), `--color-amber-text` (title), `--color-amber-dim` (meta), `--font-serif` (title), `--font-mono` (meta/tags)
+- Layout mirrors `.projGrid` pattern (`repeat(3, 1fr)` → `repeat(2)` tablet → `1fr` mobile)
+- No new design tokens required
+- New CSS classes: `.blogScrollArea`, `.blogTileGrid`, `.blogTile`, `.blogTileLabel`, `.blogTileTitle`, `.blogTileExcerpt`, `.blogTileMeta`, `.blogTileTag`, `.blogTileCta`
+
+### Design blockers
+None — all tokens exist, pattern established by projGrid + projCard. Proceed to implementation.
