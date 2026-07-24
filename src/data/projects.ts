@@ -45,4 +45,16 @@ export const projects: Project[] = [
     featured: true,
     highlight: 'Zero-dependency explainers',
   },
+  {
+    id: 'kodemux',
+    name: 'kodemux',
+    tagline: 'Routes every AI coding task to the cheapest model that can actually do it',
+    description:
+      'A repo-native CLI that estimates task complexity from multiple signals — including the real git diff and critical-path detection — and routes to a Haiku → Sonnet → Opus → Fable capability ladder. Adds risk floors for security/production work, a confidence-gated escalation cascade, and parallel-agent recommendations for multi-agent work, plus git-level guardrails: secrets scanning, branch protection, and scoped post-hooks.',
+    stack: ['TypeScript', 'Node.js', 'Claude API', 'CLI'],
+    liveUrl: 'https://vibhusharma101.github.io/kodemux/',
+    githubUrl: 'https://github.com/vibhusharma101/kodemux',
+    featured: true,
+    highlight: 'Complexity-driven model routing',
+  },
 ];
