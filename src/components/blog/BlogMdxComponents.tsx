@@ -1778,3 +1778,375 @@ export function URLRiskChecker() {
     </div>
   );
 }
+
+
+/* ─────────────────────────────────────────────────────────
+   13. KodemuxRouterDemo — a live, faithful port of kodemux's
+   real deterministic router (src/router.ts + src/classify.ts).
+   Not a mock: same term lists, same thresholds, same math.
+───────────────────────────────────────────────────────── */
+
+type KTier = 'simple' | 'standard' | 'complex' | 'frontier';
+type KMode = 'single' | 'plan' | 'multi-agent' | 'read-only';
+
+const K_TIERS: KTier[] = ['simple', 'standard', 'complex', 'frontier'];
+
+const K_TIER_SPECS: Record<KTier, { model: string; efforts: [string, string] | [null, null]; blurb: string; color: string }> = {
+  simple:   { model: 'claude-haiku-4-5',  efforts: [null, null],       blurb: 'mechanical, low-risk edits',                     color: 'var(--color-amber-dim)' },
+  standard: { model: 'claude-sonnet-5',   efforts: ['medium', 'high'], blurb: 'everyday features & fixes',                      color: '#7ec8e3' },
+  complex:  { model: 'claude-opus-4-8',   efforts: ['high', 'xhigh'],  blurb: 'hard, multi-file, autonomous work',              color: 'var(--color-amber)' },
+  frontier: { model: 'claude-fable-5',    efforts: ['xhigh', 'max'],   blurb: 'most demanding reasoning & long-horizon work',   color: 'var(--color-magenta)' },
+};
+
+const K_POLICY = {
+  thresholds: { standard: 2, complex: 5, frontier: 9 },
+  riskFloor: 'complex' as KTier,
+  escalateBelowConfidence: 0.6,
+  criticalPaths: ['**/auth/**', '**/migrations/**', 'infra/**', '.env*', '**/secrets/**', '**/payment*/**'],
+};
+
+type KIntent = 'docs' | 'test' | 'bugfix' | 'feature' | 'refactor' | 'architecture' | 'security';
+const K_INTENTS: KIntent[] = ['docs', 'test', 'bugfix', 'feature', 'refactor', 'architecture', 'security'];
+const K_DEFAULT_INTENT: KIntent = 'feature';
+const K_INTENT_KEYWORDS: Record<KIntent, string[]> = {
+  security: ['security', 'secure', 'audit', 'vulnerability', 'vulnerabilities', 'vuln', 'exploit', 'owasp', 'pentest', 'threat', 'cve', 'injection', 'xss', 'csrf', 'auth', 'authentication', 'authorization'],
+  architecture: ['architecture', 'architect', 'redesign', 'system design', 'rearchitect', 'greenfield', 'from scratch', 'scaffold a', 'design a', 'design the'],
+  refactor: ['refactor', 'restructure', 'decouple', 'modularize', 'rewrite', 'overhaul', 'migrate', 'migration', 'clean up', 'extract'],
+  bugfix: ['fix', 'bug', 'patch', 'hotfix', 'repair', 'broken', 'crash', 'regression', 'error', 'exception', 'failing', 'debug', 'root cause'],
+  test: ['test', 'tests', 'unit test', 'coverage', 'spec', 'e2e', 'fixture'],
+  docs: ['docs', 'doc', 'documentation', 'readme', 'comment', 'comments', 'changelog', 'typo', 'jsdoc', 'docstring', 'wording'],
+  feature: ['add', 'implement', 'build', 'create', 'feature', 'support', 'introduce', 'new', 'endpoint', 'component'],
+};
+const K_INTENT_PRIORITY: KIntent[] = ['security', 'architecture', 'refactor', 'feature', 'bugfix', 'test', 'docs'];
+const K_INTENT_FLOOR: Partial<Record<KIntent, KTier>> = { bugfix: 'standard', feature: 'standard', refactor: 'standard', architecture: 'complex' };
+
+const K_COMPLEXITY_TERMS = ['distributed', 'concurrency', 'concurrent', 'race condition', 'deadlock', 'threading', 'multithread', 'async', 'parallel', 'algorithm', 'optimize', 'optimization', 'performance', 'scalability', 'throughput', 'latency', 'architecture', 'redesign', 'design', 'migrate', 'migration', 'rewrite', 'overhaul', 'protocol', 'consensus', 'cryptography', 'encryption', 'compiler', 'parser', 'state machine', 'memory leak', 'end-to-end', 'pipeline', 'orchestrate', 'rearchitect', 'from scratch'];
+const K_SIMPLICITY_TERMS = ['typo', 'rename', 'comment', 'formatting', 'lint', 'whitespace', 'bump', 'changelog', 'readme', 'spelling', 'wording', 'indent', 'reword', 'one-liner', 'trivial'];
+const K_SCOPE_TERMS = ['entire', 'whole', 'across the', 'codebase', 'system-wide', 'everywhere', 'all files', 'throughout', 'every module', 'end-to-end'];
+const K_RISK_SECURITY_TERMS = ['security', 'secure', 'auth', 'authentication', 'authorization', 'vulnerability', 'vulnerabilities', 'exploit', 'owasp', 'cve', 'injection', 'xss', 'csrf', 'crypto', 'cryptography', 'password', 'secret', 'token', 'payment', 'pii', 'gdpr'];
+const K_COMPLEXITY_MAX = 14;
+
+const kEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const kCount = (text: string, term: string) => (text.match(new RegExp(`\\b${kEsc(term)}\\b`, 'gi')) || []).length;
+const kAnyMatch = (text: string, terms: string[]) => terms.filter(t => kCount(text, t) > 0);
+
+interface KAnalysis {
+  intent: KIntent; complexity: number; risks: string[]; scopeWide: boolean; multiStep: boolean;
+  steps: number; complexityHits: string[]; simplicityHits: string[]; reasons: string[];
+}
+
+function kAnalyze(prompt: string, criticalPath: boolean): KAnalysis {
+  const text = (prompt || '').toLowerCase();
+  const reasons: string[] = [];
+
+  const iScore: Record<string, number> = {};
+  K_INTENTS.forEach(i => { iScore[i] = 0; });
+  for (const intent of K_INTENTS) for (const kw of K_INTENT_KEYWORDS[intent]) {
+    const n = kCount(text, kw);
+    if (n > 0) iScore[intent] += n;
+  }
+  let intent: KIntent = K_DEFAULT_INTENT, best = -1;
+  for (const cand of K_INTENT_PRIORITY) if (iScore[cand] > best) { best = iScore[cand]; intent = cand; }
+  if (best <= 0) intent = K_DEFAULT_INTENT;
+
+  let complexity = 0;
+  const complexityHits = kAnyMatch(text, K_COMPLEXITY_TERMS); complexity += complexityHits.length * 2;
+  const simplicityHits = kAnyMatch(text, K_SIMPLICITY_TERMS); complexity -= simplicityHits.length * 2;
+  const scopeHits = kAnyMatch(text, K_SCOPE_TERMS); const scopeWide = scopeHits.length > 0;
+  if (scopeWide) { complexity += 2; reasons.push(`wide scope (${scopeHits.slice(0, 2).join(', ')}) → +complexity`); }
+  const connectors = (text.match(/\b(and then|then|also|afterwards|followed by)\b|;/gi) || []).length;
+  const multiStep = connectors >= 1;
+  if (multiStep) { const b = Math.min(3, connectors); complexity += b; reasons.push(`multi-step request (${connectors} connector${connectors > 1 ? 's' : ''}) → +${b}`); }
+  if (complexityHits.length) reasons.unshift(`complexity signals: ${complexityHits.slice(0, 4).join(', ')}`);
+  if (simplicityHits.length) reasons.push(`simplicity signals: ${simplicityHits.slice(0, 4).join(', ')}`);
+  complexity = Math.max(0, Math.min(K_COMPLEXITY_MAX, complexity));
+
+  const risks: string[] = [];
+  const secHits = kAnyMatch(text, K_RISK_SECURITY_TERMS);
+  if (secHits.length) { risks.push('security'); reasons.push(`security-sensitive (${secHits.slice(0, 2).join(', ')})`); }
+  if (criticalPath) { risks.push('critical'); reasons.push('critical path touched (src/auth/session.ts) → +risk'); }
+
+  return { intent, complexity, risks, scopeWide, multiStep, steps: connectors, complexityHits, simplicityHits, reasons };
+}
+
+function kTierFromComplexity(c: number): KTier {
+  if (c >= K_POLICY.thresholds.frontier) return 'frontier';
+  if (c >= K_POLICY.thresholds.complex) return 'complex';
+  if (c >= K_POLICY.thresholds.standard) return 'standard';
+  return 'simple';
+}
+const kMaxTier = (a: KTier, b: KTier) => (K_TIERS.indexOf(a) >= K_TIERS.indexOf(b) ? a : b);
+
+function kChooseMode(a: KAnalysis, tier: KTier): KMode {
+  const idx = K_TIERS.indexOf(tier);
+  if (idx >= K_TIERS.indexOf('complex') && (a.scopeWide || a.multiStep)) return 'multi-agent';
+  if (idx >= K_TIERS.indexOf('standard') && (a.multiStep || a.intent === 'feature' || a.intent === 'refactor' || a.intent === 'architecture')) return 'plan';
+  return 'single';
+}
+
+function kRecommendParallelism(a: KAnalysis, mode: KMode): number {
+  if (mode !== 'multi-agent') return 1;
+  let n = 2;
+  n += Math.min(2, Math.max(0, a.steps - 1));
+  if (a.scopeWide) n += 1;
+  return Math.max(2, Math.min(6, n));
+}
+
+interface KRoute {
+  intent: KIntent; complexity: number; tier: KTier; risks: string[];
+  model: string; effort: string | null; mode: KMode; agents: number;
+  confidence: number; escalation: { model: string; tier: KTier } | null; reasons: string[];
+}
+
+function kRoute(prompt: string, criticalPath: boolean): KRoute {
+  const a = kAnalyze(prompt, criticalPath);
+  const isAudit = /\baudit\b|\breview\b|\bassess\b/.test(prompt.toLowerCase()) && a.intent === 'security';
+
+  let tier = kTierFromComplexity(a.complexity);
+  const floor = K_INTENT_FLOOR[a.intent];
+  if (floor) tier = kMaxTier(tier, floor);
+  if (a.risks.length) tier = kMaxTier(tier, K_POLICY.riskFloor);
+
+  const spec = K_TIER_SPECS[tier];
+  const upperBand = a.complexity >= (K_POLICY.thresholds.frontier + K_POLICY.thresholds.complex) / 2;
+  const boost = a.risks.length > 0 || upperBand || (a.multiStep && K_TIERS.indexOf(tier) >= K_TIERS.indexOf('complex'));
+  const effort = spec.efforts[boost ? 1 : 0] ?? spec.efforts[0];
+
+  const mode: KMode = isAudit ? 'read-only' : kChooseMode(a, tier);
+  const agents = kRecommendParallelism(a, mode);
+
+  let conf = 0.5;
+  conf += Math.min(0.35, 0.07 * a.reasons.length);
+  if (a.complexityHits.length && a.simplicityHits.length) conf -= 0.2;
+  if (a.simplicityHits.length && !a.complexityHits.length) conf += 0.12;
+  if (a.complexityHits.length >= 3 && !a.simplicityHits.length) conf += 0.12;
+  const bounds = [K_POLICY.thresholds.standard, K_POLICY.thresholds.complex, K_POLICY.thresholds.frontier];
+  if (Math.min(...bounds.map(b => Math.abs(a.complexity - b))) <= 1) conf -= 0.15;
+  if (a.complexity === 0 && a.reasons.length === 0) conf = 0.25;
+  const confidence = Math.max(0.05, Math.min(0.97, Number(conf.toFixed(2))));
+
+  let escalation: { model: string; tier: KTier } | null = null;
+  const idx = K_TIERS.indexOf(tier);
+  if (idx < K_TIERS.length - 1 && confidence < K_POLICY.escalateBelowConfidence) {
+    const next = K_TIERS[idx + 1];
+    escalation = { model: K_TIER_SPECS[next].model, tier: next };
+  }
+
+  const reasons = [...a.reasons];
+  if (mode === 'multi-agent') reasons.push(`parallelizable work → fan out to ${agents} agents`);
+  reasons.unshift(`complexity ${a.complexity} + ${a.risks.length ? `risk[${a.risks.join(',')}] ` : ''}intent ${a.intent} → ${tier} tier`);
+
+  return { intent: a.intent, complexity: a.complexity, tier, risks: a.risks, model: spec.model, effort, mode, agents, confidence, escalation, reasons };
+}
+
+const K_EXAMPLES = [
+  'fix a typo in the README',
+  'add a dark mode toggle to the settings page',
+  'audit the payment flow for security vulnerabilities',
+  'rewrite the entire data pipeline across the whole codebase, then migrate the schema, then add integration tests',
+];
+
+export function KodemuxRouterDemo() {
+  const [prompt, setPrompt] = useState(K_EXAMPLES[0]);
+  const [criticalPath, setCriticalPath] = useState(false);
+  const r = useMemo(() => kRoute(prompt, criticalPath), [prompt, criticalPath]);
+  const tierColor = K_TIER_SPECS[r.tier].color;
+
+  return (
+    <div style={{ border: '1px solid var(--color-amber-deep)', margin: '32px 0', fontFamily: 'var(--font-mono)', background: 'var(--color-bg)' }}>
+      <div style={{ background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-amber-deep)', padding: '10px 18px' }}>
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+          {'// kodemux router — try any prompt, this is the real logic'}
+        </span>
+      </div>
+
+      <div style={{ padding: 'clamp(14px,3vw,20px)' }}>
+        <textarea
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          rows={2}
+          style={{
+            width: '100%', resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: 13,
+            color: 'var(--color-amber-text)', background: 'var(--color-bg2)',
+            border: '1px solid var(--color-amber-deep)', padding: '10px 12px', lineHeight: 1.5,
+          }}
+        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+          {K_EXAMPLES.map(ex => (
+            <button key={ex} onClick={() => setPrompt(ex)} style={{
+              fontSize: 10, fontFamily: 'var(--font-mono)', cursor: 'pointer', padding: '5px 10px',
+              background: prompt === ex ? 'var(--color-amber-sub)' : 'transparent',
+              color: prompt === ex ? 'var(--color-amber)' : 'var(--color-amber-dim)',
+              border: `1px solid ${prompt === ex ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+            }}>
+              {ex.length > 42 ? ex.slice(0, 42) + '…' : ex}
+            </button>
+          ))}
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 11, color: 'var(--color-amber-dim)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={criticalPath} onChange={e => setCriticalPath(e.target.checked)} style={{ accentColor: 'var(--color-magenta)' }} />
+          the real diff touches <code style={{ color: 'var(--color-amber-text)' }}>src/auth/session.ts</code> (try this even on an innocuous prompt)
+        </label>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--color-amber-deep)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', gap: 1, background: 'var(--color-amber-deep)' }}>
+        {[
+          { label: 'intent', value: r.intent },
+          { label: 'complexity', value: `${r.complexity} / 14` },
+          { label: 'tier', value: r.tier, color: tierColor },
+          { label: 'confidence', value: r.confidence.toFixed(2), color: r.confidence >= 0.6 ? '#7ec87e' : '#ff8c42' },
+        ].map(stat => (
+          <div key={stat.label} style={{ background: 'var(--color-bg)', padding: '10px 14px' }}>
+            <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>{stat.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: stat.color ?? 'var(--color-amber-text)' }}>{stat.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {r.risks.length > 0 && (
+        <div style={{ padding: '8px 18px', background: 'var(--color-magenta-soft)', borderTop: '1px solid var(--color-amber-deep)', fontSize: 11, color: 'var(--color-magenta)' }}>
+          risk flags: {r.risks.join(' · ')}
+        </div>
+      )}
+
+      <div style={{ borderTop: '1px solid var(--color-amber-deep)', padding: 'clamp(14px,3vw,20px)' }}>
+        {[
+          { k: 'model', v: r.model },
+          { k: 'effort', v: r.effort ?? 'n/a (Haiku has no effort control)' },
+          { k: 'mode', v: r.mode },
+          {
+            k: 'agents',
+            v: r.mode === 'multi-agent'
+              ? `${r.agents} in parallel — genuinely parallelizable`
+              : `1 — don't parallelize this`,
+            color: r.mode === 'multi-agent' ? 'var(--color-magenta)' : undefined,
+          },
+        ].map((row, i) => (
+          <div key={row.k} style={{
+            display: 'flex', gap: 12, fontSize: 12.5, padding: '7px 0',
+            borderLeft: `3px solid ${tierColor}`, paddingLeft: 12,
+            animation: 'fadeIn 0.25s ease both', animationDelay: `${i * 0.05}s`,
+          }}>
+            <span style={{ color: 'var(--color-amber-dim)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', minWidth: 60, paddingTop: 1 }}>{row.k}</span>
+            <span style={{ color: row.color ?? 'var(--color-amber-text)', fontWeight: 600 }}>{row.v}</span>
+          </div>
+        ))}
+      </div>
+
+      {r.escalation && (
+        <div style={{ padding: '10px 18px', background: 'rgba(192,144,47,0.1)', borderTop: '1px solid var(--color-amber-deep)', fontSize: 11, color: '#e8b86d' }}>
+          ↑ escalate to <b>{r.escalation.model}</b> ({r.escalation.tier}) if the agent stalls or the change proves bigger than it looked
+        </div>
+      )}
+
+      <div style={{ borderTop: '1px dashed var(--color-amber-deep)', padding: 'clamp(14px,3vw,20px)' }}>
+        <div style={{ fontSize: 9, color: 'var(--color-amber-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>why</div>
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          {r.reasons.map((reason, i) => (
+            <li key={i} style={{ fontSize: 11.5, color: 'var(--color-amber-dim)', marginBottom: 4, lineHeight: 1.5 }}>{reason}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────
+   14. KodemuxGuardTrace — hooks-as-enforcement, applied:
+   kodemux's PreToolUse hook blocking a risky commit live.
+───────────────────────────────────────────────────────── */
+
+type KTraceType = 'ai' | 'tool' | 'hook' | 'error' | 'success';
+const KG_TRACE_COLOR: Record<KTraceType, string> = {
+  ai: 'var(--color-amber-text)', tool: 'var(--color-amber-dim)', hook: '#7ec8e3',
+  error: 'var(--color-magenta)', success: '#7ec87e',
+};
+const KG_TRACE_PREFIX: Record<KTraceType, string> = { ai: '❯', tool: '▸', hook: '⚙', error: '✗', success: '✓' };
+
+const KG_STEPS: { label: string; text: string; type: KTraceType }[] = [
+  { label: 'claude', text: "Done — running `git commit -m \"quick fix\"` on main…", type: 'ai' },
+  { label: 'tool', text: 'Bash → git commit -m "quick fix"', type: 'tool' },
+  { label: 'hook', text: 'PreToolUse firing: kodemux hook pre-tool-use', type: 'hook' },
+  { label: 'hook', text: "kodemux guard: branch 'main' is protected.", type: 'error' },
+  { label: 'hook', text: 'exit 2 → commit is BLOCKED', type: 'error' },
+  { label: 'claude', text: 'Understood — creating a feature branch first…', type: 'ai' },
+  { label: 'tool', text: 'Bash → git checkout -b fix/quick-thing && git commit -m "quick fix"', type: 'tool' },
+  { label: 'hook', text: 'PreToolUse firing: kodemux hook pre-tool-use', type: 'hook' },
+  { label: 'hook', text: 'kodemux scan: 1 potential secret found — leak.env:1 [github-token]', type: 'error' },
+  { label: 'hook', text: 'exit 2 → commit is BLOCKED again', type: 'error' },
+  { label: 'claude', text: 'Removing the leaked token, retrying…', type: 'ai' },
+  { label: 'tool', text: 'Bash → git commit -m "quick fix"', type: 'tool' },
+  { label: 'hook', text: 'kodemux guard + scan: clean. exit 0 → ALLOWED ✓', type: 'success' },
+  { label: 'tool', text: 'Commit succeeded on fix/quick-thing ✓', type: 'success' },
+];
+
+export function KodemuxGuardTrace() {
+  const [shown, setShown] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (playing && shown < KG_STEPS.length) {
+      intervalRef.current = setInterval(() => {
+        setShown(s => {
+          if (s + 1 >= KG_STEPS.length) { setPlaying(false); if (intervalRef.current) clearInterval(intervalRef.current); }
+          return s + 1;
+        });
+      }, 420);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [playing, shown]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [shown]);
+
+  const reset = () => { setShown(0); setPlaying(false); if (intervalRef.current) clearInterval(intervalRef.current); };
+  const done = shown >= KG_STEPS.length;
+
+  return (
+    <div style={{ border: '1px solid var(--color-amber-deep)', margin: '32px 0', fontFamily: 'var(--font-mono)', background: 'var(--color-bg)' }}>
+      <div style={{ background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-amber-deep)', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-magenta)', display: 'inline-block' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-amber)', display: 'inline-block' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-amber-dim)', display: 'inline-block' }} />
+          <span style={{ marginLeft: 10, fontSize: 10, color: 'var(--color-amber-dim)', letterSpacing: '0.1em' }}>kodemux-guard — bash</span>
+        </div>
+        {!done ? (
+          <button onClick={() => setPlaying(p => !p)} style={{ background: 'var(--color-magenta)', color: '#000', border: 'none', padding: '4px 12px', fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', cursor: 'pointer', fontWeight: 700 }}>
+            {playing ? '⏸ PAUSE' : shown === 0 ? '▶ RUN DEMO' : '▶ RESUME'}
+          </button>
+        ) : (
+          <button onClick={reset} style={{ background: 'transparent', color: 'var(--color-amber-dim)', border: '1px solid var(--color-amber-deep)', padding: '4px 12px', fontSize: 10, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', cursor: 'pointer' }}>↺ RESET</button>
+        )}
+      </div>
+
+      <div style={{ padding: 'clamp(12px,3vw,16px) clamp(12px,3vw,20px)', minHeight: 220, maxHeight: 340, overflowY: 'auto', fontSize: 12, lineHeight: 1.7 }}>
+        {shown === 0 && (
+          <span style={{ color: 'var(--color-amber-dim)', fontSize: 11 }}>
+            Press ▶ RUN DEMO — this is the exact PreToolUse hook `kodemux hooks install` wires up, blocking on a protected branch and then a leaked secret before finally letting a clean commit through.
+          </span>
+        )}
+        {KG_STEPS.slice(0, shown).map((step, i) => (
+          <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 2 }}>
+            <span style={{ color: 'var(--color-amber-dim)', width: 22, textAlign: 'right', flexShrink: 0, fontSize: 10, paddingTop: 2 }}>{String(i + 1).padStart(2, '0')}</span>
+            <span style={{ color: KG_TRACE_COLOR[step.type], flexShrink: 0, width: 14 }}>{KG_TRACE_PREFIX[step.type]}</span>
+            <span style={{ color: 'var(--color-amber-dim)', fontSize: 9, width: 46, flexShrink: 0, paddingTop: 2, letterSpacing: '0.05em' }}>[{step.label}]</span>
+            <span style={{ color: KG_TRACE_COLOR[step.type] }}>{step.text}</span>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--color-amber-deep)', padding: '8px 20px', display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        {([{ type: 'ai', label: 'Claude' }, { type: 'tool', label: 'Tool call' }, { type: 'hook', label: 'Hook' }, { type: 'error', label: 'Blocked' }, { type: 'success', label: 'Allowed' }] as { type: KTraceType; label: string }[]).map(({ type, label }) => (
+          <div key={type} style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <span style={{ color: KG_TRACE_COLOR[type], fontSize: 10 }}>{KG_TRACE_PREFIX[type]}</span>
+            <span style={{ color: 'var(--color-amber-dim)', fontSize: 9, letterSpacing: '0.08em' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
