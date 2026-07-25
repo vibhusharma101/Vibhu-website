@@ -1,0 +1,112 @@
+---
+title: "I Kept Guessing Which Claude Model to Use. So I Built a Router For It."
+excerpt: "Every task, the same three decisions by hand: which model, how many agents, is there a secret in this diff. Here's the tool I built to stop guessing — plus a bug I found in my own tool while writing about it."
+date: "2026-07-25"
+readTime: "10 min read"
+tags: ["ai", "claude-code", "developer-tools", "open-source"]
+published: true
+---
+
+I have a bad habit. Every time I start a task in Claude Code, I make three decisions by hand, in about two seconds, without really thinking about them:
+
+Is this worth Opus, or is Sonnet fine? Should I spin up a few parallel agents, or is that overkill for a one-line fix? And — quietly, in the back of my mind — *did I remember to check this diff for a leaked API key before I commit?*
+
+Most of the time I get it right. Sometimes I don't. I've run Opus on a typo fix out of sheer habit. I've spun up four agents to touch two files. And once, memorably, I nearly committed a `.env` value straight to `main` because I was moving fast and the diff looked fine at a glance.
+
+None of these are catastrophic. All of them are avoidable. And all of them come from the same root cause: **I was making a judgment call that a machine could make faster and more consistently than I could** — I just hadn't built the machine yet.
+
+So I built it. It's called **kodemux**, and this post is both an introduction to it and a small, honest story about a bug I found in it *while writing this post* — which is a better argument for why it exists than anything I could have planned.
+
+---
+
+## The three decisions, made for you
+
+kodemux sits between your prompt and Claude, and answers the same three questions I was answering by hand:
+
+1. **Which model actually fits this task?** Not "which model do I feel like using" — an estimate of real complexity, from real signals: the words in your prompt, the actual `git diff`, whether the change touches a critical path like `src/auth/**`.
+2. **How many agents should run, if any?** Most tasks are one agent, one thread, done. A few are genuinely parallelizable. kodemux tells you which is which, explicitly — including saying "just one, don't parallelize" instead of staying silent when the answer is one.
+3. **Is there anything in this diff that shouldn't be committed?** A secret-shaped string, a commit aimed at a protected branch — caught before it happens, not after.
+
+The first one is the centerpiece. Here's the actual router — not a demo, not a simplified mock. This is the same term lists, the same thresholds, the same math as the real `src/router.ts`. Type your own prompt, or try the presets:
+
+<KodemuxRouterDemo />
+
+Notice what happens when you check the "touches `src/auth/session.ts`" box on an innocuous-sounding prompt. The tier floors upward even though the prompt itself never mentions security. That's deliberate — **the real diff outranks the words describing it.** A change described as "small config tweak" that happens to land in your auth module still gets routed like auth code, because that's what it actually is.
+
+---
+
+## This is the same lesson as last time, just enforced differently
+
+If you read my [last post about `CLAUDE.md` versus hooks](/blog/claudemd-vs-hooks), you already know the mental model I'm about to lean on:
+
+> **Written instructions are advice. Hooks are enforcement.**
+
+kodemux's guardrails are that exact idea, built into a product instead of hand-rolled per project. Instead of writing "always check the diff for secrets before committing" into a `CLAUDE.md` and hoping it survives three hundred lines of context, `kodemux hooks install` wires a real `PreToolUse` hook that runs on every single `git commit` — no exceptions, no fatigue, no forgetting.
+
+Here's that hook actually firing, live — first blocking a commit to a protected branch, then blocking a second attempt because of a leaked token, before finally letting a clean commit through:
+
+<KodemuxGuardTrace />
+
+This is the whole thesis of the last post, applied: the rule didn't change. Where it lives did. It's no longer a sentence Claude has to remember under pressure — it's a script that runs whether Claude remembers or not.
+
+---
+
+## The bug I found while writing this post
+
+Here's the part I didn't plan for.
+
+While building the write-up for this router, I ran a batch of sample prompts through it and started looking at the output line by line. For most prompts, the response looked like this:
+
+```
+tier        frontier
+model       claude-fable-5
+mode        multi-agent
+agents      4 in parallel — genuinely parallelizable
+```
+
+But for a simple one — "fix a typo in the README" — the `agents` line just… wasn't there. Not "agents: 1." Nothing. The field existed internally (the router always computes a number), but the code that turned it into human-readable output only printed a line when the answer was "more than one."
+
+Silence isn't the same as "don't parallelize." Silence is just silence — and if you're the one reading the recommendation, an absent line and an ignored field look identical. I'd built a tool to stop me from guessing, and it was quietly asking me to keep guessing on the majority case.
+
+I fixed it the same day, in three places at once — the CLI's text output, the Claude Code hook's context injection, and the copy-paste skill's instructions — so a task that should run single-threaded now says so, every time:
+
+```
+agents: 1 — do not parallelize this; a single agent working
+sequentially is enough, extra agents would just add
+coordination overhead.
+```
+
+I'm including this in the post instead of quietly patching it and moving on, because it's the most honest thing I can tell you about building developer tools: you don't find the gaps by staring at the code. You find them by actually using the thing, out loud, in front of someone — even if that someone is just yourself, writing a blog post about it.
+
+---
+
+## Two ways to install it
+
+You don't need to trust a black box here — pick the version that matches how much you want running on your machine.
+
+**The CLI, with native Claude Code hooks:**
+
+```bash
+git clone https://github.com/vibhusharma101/kodemux.git
+cd kodemux && npm install && npm link
+kodemux hooks install   # wires UserPromptSubmit + PreToolUse
+```
+
+This registers into `.claude/settings.json` — additive and idempotent, so it merges into whatever hooks you already have and backs up the file before touching it. Running it twice does nothing the second time.
+
+**Or skip the CLI entirely.** If you'd rather not install anything, `pack/` in the repo is a copy-paste alternative: the exact same routing rubric as a markdown skill, plus two small shell scripts for the guardrails. No Node, no build step — Claude reads the skill and reasons through the same logic directly.
+
+Both paths compute the same answer. The CLI path is deterministic (a script decides); the skill path hands the same rubric to Claude and lets it reason through it using context the CLI doesn't have, like the files it's already read this session.
+
+---
+
+## Why bother, when you could just... use your judgment?
+
+Fair question. My judgment isn't bad. It's just inconsistent, and inconsistency compounds. Across a hundred tasks a week, "usually right" quietly turns into wasted spend on trivial fixes routed to a frontier model, or an underpowered model struggling on something that needed real reasoning — and, once in a while, a secret that made it one commit further than it should have.
+
+None of those failures are dramatic. That's exactly why they're easy to let slide, and exactly why they're worth automating away. The interesting engineering wasn't the routing logic — it's mostly arithmetic on keyword hits and a `git diff`. The interesting part was noticing how many small, low-stakes decisions I was making on autopilot, and how much better a two-second deterministic check is than a two-second guess, run consistently, every single time.
+
+Try it on your own repo, or just play with the router above on a prompt you're about to actually run. If you find a gap the way I found mine, that's not a bug report — that's the point.
+
+**Source:** [github.com/vibhusharma101/kodemux](https://github.com/vibhusharma101/kodemux)
+**Try it live:** [vibhusharma101.github.io/kodemux](https://vibhusharma101.github.io/kodemux/)

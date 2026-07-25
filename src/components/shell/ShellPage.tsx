@@ -8,9 +8,9 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import type { PanelId } from '@/types/panel';
-import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer, JobStateVisualizer, SecurityLayerDiagram, FailModeCompare, ManifestMapper, URLRiskChecker } from '@/components/blog/BlogMdxComponents';
+import { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer, JobStateVisualizer, SecurityLayerDiagram, FailModeCompare, ManifestMapper, URLRiskChecker, KodemuxRouterDemo, KodemuxGuardTrace } from '@/components/blog/BlogMdxComponents';
 
-const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer, JobStateVisualizer, SecurityLayerDiagram, FailModeCompare, ManifestMapper, URLRiskChecker };
+const mdxComponents = { ComparisonToggle, HookTrace, TryItChecklist, LayerModel, MidpointProof, ComplexityTable, SearchRaceVisualizer, JobStateVisualizer, SecurityLayerDiagram, FailModeCompare, ManifestMapper, URLRiskChecker, KodemuxRouterDemo, KodemuxGuardTrace };
 
 interface Props {
   initialPanel: PanelId;
