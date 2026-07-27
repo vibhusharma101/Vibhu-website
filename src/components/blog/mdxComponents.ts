@@ -31,6 +31,8 @@ import {
   PrsRubberStamp,
   PrsFanOut,
   PrsEvidenceGate,
+  PrsContextLens,
+  PrsSymbolMap,
 } from './PrsMdxComponents';
 
 export const mdxComponents = {
@@ -53,4 +55,6 @@ export const mdxComponents = {
   PrsRubberStamp,
   PrsFanOut,
   PrsEvidenceGate,
+  PrsContextLens,
+  PrsSymbolMap,
 };
