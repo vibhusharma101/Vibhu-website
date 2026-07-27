@@ -1486,3 +1486,284 @@ export function PrsPromptOrder() {
     </div>
   );
 }
+
+/* ─────────────────────────────────────────────────────────
+   9. PrsConvergence — five rounds of PRS reviewing the hook
+      built to enforce its own correctness. 17→17→15→5→0.
+───────────────────────────────────────────────────────── */
+
+interface Round {
+  n: number;
+  count: number;
+  headline: string;
+  findings: string[];
+}
+
+const ROUNDS: Round[] = [
+  {
+    n: 1, count: 17,
+    headline: 'The whole hook was fail-open',
+    findings: [
+      'If `gh` was missing, the hook treated that as “clean” and disarmed — silently breaking the exact guarantee it existed to provide.',
+      'A transiently failing GitHub query did the same thing: no answer was read as a good answer.',
+      'Correct, and embarrassing. The guard shipped with its central property inverted.',
+    ],
+  },
+  {
+    n: 2, count: 17,
+    headline: 'The fail-closed fix was incomplete — and the safety net had a hole shaped like itself',
+    findings: [
+      'Two of four GitHub queries still swallowed their errors after the round-1 fix.',
+      'The sharpest catch of the whole saga: `block()` itself called `jq`. So the “jq is missing → block” branch produced no output and allowed the stop.',
+      'The thing that catches failures could not catch the failure of the thing it needed to catch failures.',
+    ],
+  },
+  {
+    n: 3, count: 15,
+    headline: 'Still fail-open at three edges',
+    findings: [
+      '`block()` could *still* fail open when `jq` was present but broken — missing is not the only way a dependency fails.',
+      '`git` being missing was fail-open.',
+      'A `printf | grep` could drop its match to SIGPIPE under `pipefail`, turning a real hit into a silent miss.',
+    ],
+  },
+  {
+    n: 4, count: 5,
+    headline: 'A round-3 fix had itself broken convergence',
+    findings: [
+      'I had made “CI returned no rows” keep the hook armed — safer, on the face of it.',
+      'But a repo with no checks configured would then *never* be able to disarm, and the loop could never terminate.',
+      'PRS caught that my own hardening had traded a fail-open bug for an infinite loop.',
+    ],
+  },
+  {
+    n: 5, count: 0,
+    headline: 'Clean',
+    findings: [
+      'Fifty-four findings across five rounds, every one addressed.',
+      'Each fix landed with a test; the suite grew to seventeen mocked cases.',
+      'Exactly one finding was not fixed — an ambiguous `git` state with no reliable shell-level distinction between “not a repo” and “corrupted metadata” — reasoned-accepted as a known limitation, in writing, on the thread.',
+    ],
+  },
+];
+
+const MAX_ROUND = 17;
+
+export function PrsConvergence() {
+  const [sel, setSel] = useState(1);
+  const round = ROUNDS.find(r => r.n === sel)!;
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>PRS reviewing its own guardrail — pick a round</span>
+        <span style={{ ...TITLE, color: 'var(--color-magenta)' }}>54 findings · 0 remaining</span>
+      </div>
+
+      {/* the chart */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 'clamp(6px,2vw,14px)',
+        padding: 'clamp(16px,4vw,24px) clamp(13px,4vw,20px) 0',
+        height: 168,
+      }}>
+        {ROUNDS.map(r => {
+          const active = r.n === sel;
+          const h = r.count === 0 ? 3 : Math.max(6, (r.count / MAX_ROUND) * 118);
+          const color = r.count === 0 ? '#4ec9b0' : active ? 'var(--color-magenta)' : 'var(--color-amber-dim)';
+          return (
+            <button
+              key={r.n}
+              onClick={() => setSel(r.n)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 7,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono)',
+                padding: 0,
+              }}
+            >
+              <span style={{ fontSize: 15, color, fontWeight: 700 }}>{r.count}</span>
+              <div style={{
+                width: '100%',
+                height: h,
+                background: active ? color : 'transparent',
+                border: `1px solid ${color}`,
+                transition: 'all 0.25s',
+              }} />
+              <span style={{
+                fontSize: 9.5,
+                color: active ? 'var(--color-amber)' : 'var(--color-amber-dim)',
+                letterSpacing: '0.06em',
+                paddingBottom: 4,
+                whiteSpace: 'nowrap',
+              }}>
+                RD {r.n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* the detail */}
+      <div style={{
+        margin: 'clamp(10px,3vw,16px) clamp(13px,4vw,20px) clamp(16px,4vw,22px)',
+        borderTop: '1px solid var(--color-amber-deep)',
+        paddingTop: 16,
+      }}>
+        <div style={{
+          fontSize: 12.5,
+          color: round.count === 0 ? '#4ec9b0' : 'var(--color-magenta)',
+          letterSpacing: '0.04em',
+          marginBottom: 12,
+        }}>
+          Round {round.n} — {round.count} finding{round.count === 1 ? '' : 's'} · {round.headline}
+        </div>
+        {round.findings.map(f => (
+          <div key={f} style={{ display: 'flex', gap: 10, marginBottom: 9, fontSize: 12, lineHeight: 1.7 }}>
+            <span style={{ color: 'var(--color-amber-dim)', flexShrink: 0 }}>→</span>
+            <span style={{ color: 'var(--color-amber-dim)' }}>{f}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   10. PrsFailClosed — inject a fault, compare the guarantee.
+───────────────────────────────────────────────────────── */
+
+interface Fault {
+  id: string;
+  label: string;
+  open: string;
+  closed: string;
+  round: number;
+}
+
+const FAULTS: Fault[] = [
+  {
+    id: 'gh', label: '`gh` binary is missing', round: 1,
+    open: 'No PR data comes back. The hook reads “no open threads, no red checks” and disarms — the turn ends with review comments still unanswered.',
+    closed: 'Cannot determine the state → cannot prove the work is done → block. The agent keeps working.',
+  },
+  {
+    id: 'query', label: 'GitHub query fails transiently', round: 1,
+    open: 'A network blip is indistinguishable from a clean PR. The guarantee evaporates for exactly as long as the API is unhappy.',
+    closed: 'An error is not an answer. Block, and let the next turn re-query.',
+  },
+  {
+    id: 'jq-missing', label: '`jq` is missing', round: 2,
+    open: 'The “jq is missing → block” branch called `block()`, which itself called `jq`. It produced nothing, and the stop was allowed. The safety net had a hole shaped exactly like the thing it was catching.',
+    closed: '`block()` falls back to exit code 2, which also blocks — no `jq` required.',
+  },
+  {
+    id: 'jq-broken', label: '`jq` is present but broken', round: 3,
+    open: 'The round-2 fix checked only whether `jq` existed. A `jq` that exists and fails still slipped straight through.',
+    closed: 'The guard tests the actual invocation, not the binary\'s presence, and falls through to exit 2 on any failure.',
+  },
+  {
+    id: 'git', label: '`git` is missing', round: 3,
+    open: 'Same shape, different tool. No git, no branch state, hook disarms.',
+    closed: 'Block. Unverifiable state never counts as a passing state.',
+  },
+  {
+    id: 'sigpipe', label: '`printf | grep` hits SIGPIPE under `pipefail`', round: 3,
+    open: 'A real match gets dropped when the pipe closes early — the hook concludes there was nothing to find.',
+    closed: 'The pipeline is restructured so an early close cannot be mistaken for an empty result.',
+  },
+];
+
+export function PrsFailClosed() {
+  const [sel, setSel] = useState(FAULTS[0].id);
+  const fault = FAULTS.find(f => f.id === sel)!;
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>Inject a fault — does the guarantee survive?</span>
+      </div>
+
+      <div style={{ padding: 'clamp(12px,3vw,16px) clamp(13px,4vw,18px)', borderBottom: '1px solid var(--color-amber-deep)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {FAULTS.map(f => {
+          const active = sel === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setSel(f.id)}
+              style={{
+                padding: '5px 10px',
+                background: active ? 'var(--color-amber)' : 'transparent',
+                color: active ? '#000' : 'var(--color-amber-dim)',
+                border: `1px solid ${active ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10.5,
+                cursor: 'pointer',
+                fontWeight: active ? 700 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {f.label.replace(/`/g, '')}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+        <div style={{ padding: 'clamp(14px,4vw,18px)', borderRight: '1px solid var(--color-amber-deep)' }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.09em', color: 'var(--color-magenta)', marginBottom: 10 }}>
+            ✗ FAIL-OPEN — as shipped, caught in round {fault.round}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.75 }}>{fault.open}</div>
+          <div style={{
+            marginTop: 13,
+            padding: '8px 11px',
+            background: 'var(--color-magenta-soft)',
+            borderLeft: '3px solid var(--color-magenta)',
+            fontSize: 11,
+            color: 'var(--color-magenta)',
+          }}>
+            Guarantee broken — silently.
+          </div>
+        </div>
+
+        <div style={{ padding: 'clamp(14px,4vw,18px)', background: 'var(--color-bg2)' }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.09em', color: '#4ec9b0', marginBottom: 10 }}>
+            ✓ FAIL-CLOSED — after the fix
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.75 }}>{fault.closed}</div>
+          <div style={{
+            marginTop: 13,
+            padding: '8px 11px',
+            background: 'rgba(78,201,176,0.09)',
+            borderLeft: '3px solid #4ec9b0',
+            fontSize: 11,
+            color: '#4ec9b0',
+          }}>
+            Guarantee holds.
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,15px) clamp(13px,4vw,20px)',
+        fontSize: 11.5,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.7,
+      }}>
+        Every one of these is the same bug wearing a different costume: <strong style={{ color: 'var(--color-amber)' }}>an
+        unverifiable state being quietly counted as a passing state.</strong> If a component exists to be a
+        guarantee, that is the only bug class that really matters.
+      </div>
+    </div>
+  );
+}

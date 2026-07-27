@@ -35,6 +35,8 @@ import {
   PrsSymbolMap,
   PrsCostLedger,
   PrsPromptOrder,
+  PrsConvergence,
+  PrsFailClosed,
 } from './PrsMdxComponents';
 
 export const mdxComponents = {
@@ -61,4 +63,6 @@ export const mdxComponents = {
   PrsSymbolMap,
   PrsCostLedger,
   PrsPromptOrder,
+  PrsConvergence,
+  PrsFailClosed,
 };
