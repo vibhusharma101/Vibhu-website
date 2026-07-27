@@ -29,6 +29,8 @@ import {
 import {
   PrsAuditScoreboard,
   PrsRubberStamp,
+  PrsFanOut,
+  PrsEvidenceGate,
 } from './PrsMdxComponents';
 
 export const mdxComponents = {
@@ -49,4 +51,6 @@ export const mdxComponents = {
   // ── How I built PRS (5-part series) ──
   PrsAuditScoreboard,
   PrsRubberStamp,
+  PrsFanOut,
+  PrsEvidenceGate,
 };

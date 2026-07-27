@@ -1,0 +1,127 @@
+---
+title: "One Prompt Can't Review Your Code. Ten Can."
+excerpt: "Part 2 of 5 — Tearing up the single-prompt reviewer for a fan-out of focused specialists, and writing the rules-of-evidence contract that made speculation structurally expensive. Most of the precision came from the prompt, not the model."
+date: "2026-07-28"
+readTime: "9 min read"
+tags: ["ai", "code-review", "llms", "prompt-engineering", "prs-series"]
+published: true
+---
+
+*Part 2 of 5 — How I built PRS. [Part 1](/blog/prs-01-the-audit-that-humbled-it) ended with a hand-scored audit at 81.2% precision and four named failure modes. This is the rewrite that went after them.*
+
+The v1 design asked one prompt to do everything: *"review this diff for security, correctness, performance, tests, and style."*
+
+Watching its output for a few weeks, the problem was obvious. **It drifts.** It starts on security, wanders into naming, and somewhere in the middle invents a finding that belongs to neither. Not because the model is weak — because "review this code" isn't a task, it's five tasks wearing a trench coat.
+
+So v2 threw it out. A review is no longer one LLM call. It's a **fan-out of focused reviewers**, run in parallel, then reconciled.
+
+<PrsFanOut />
+
+---
+
+## Parameter passes: one reviewer, one job
+
+Each specialist is a **parameter pass** — a single structured-output call scoped to exactly one concern (`security_tenancy`, `data_layer`, `testing_hygiene`, `performance_async`, and so on). A per-repo manifest declares which passes exist, each with its own prompt guide and its own bar:
+
+```python
+# each pass is invoked with its own slug, model, and gates from the manifest
+run-parameter-pass.py --slug security_tenancy --model <cheap-tier-model> ...
+
+# the gates are enforced in CODE after the model answers — never by asking it nicely
+severity_floor = entry.get("severity_floor", "MINOR")
+confidence_min = float(entry.get("confidence_min", 0.3))
+# findings below either are dropped before they can reach the merge step
+```
+
+That last comment is the load-bearing one. Three properties made this work in production rather than just in a demo:
+
+**Schema-forced output.** The call uses a JSON-Schema-constrained response, so the first character of the output is `{`. No markdown, no "Sure, here's my review":
+
+```json
+{ "verdict": "comment",
+  "summary": "...",
+  "findings": [
+    { "path": "src/services/reportService.js", "line": 142,
+      "category": "DATA", "severity": "MAJOR", "confidence": 0.85,
+      "title": "...", "body": "..." }
+  ] }
+```
+
+**Forced reasoning effort.** Remember the 2.5-second rubber stamp from Part 1? This was the fix, and it's one line:
+
+```python
+"reasoning": {"effort": "high"},
+# Without this, the model runs at its default effort and on large prompts will
+# skim and rubber-stamp `approve` (58K input tokens answered in ~2.5s / 27 tokens).
+```
+
+**Isolation.** A pass that throws, times out, or returns unparseable JSON writes an empty findings file and exits 0. Its siblings are unaffected; the merge step ignores the empty slug. One flaky reviewer never takes down a review — which matters a lot more when you have ten of them than when you had three.
+
+---
+
+## The rules of evidence — where the precision actually came from
+
+Here's the part I didn't expect. Architecture alone doesn't make a finding trustworthy. **The highest-leverage artifact in the entire system isn't a model choice — it's the base prompt every pass inherits**, and it reads less like "review this code" and more like a rules-of-evidence document for a courtroom.
+
+Two mechanisms carry most of the weight.
+
+### The unverifiable-claim rule
+
+Internally it's "rule 10", and it goes straight at failure #1:
+
+> If your premise depends on a symbol **not visible in your input** — an imported helper, a model schema, a constants file, a base class — you may not assert what it contains. Phrase it as an explicitly-marked question (*"confirm `Report._id` is an ObjectId — if it is a String, this is fine"*), cap `confidence` at 0.4, prefix the category with `UNVERIFIED_`, and never include a fix that hard-codes your guess.
+
+Crucially, security, tenancy and money concerns are **never dropped** — they get raised as that same hedged question, so a human still verifies. That one paragraph converted an entire class of confident-wrong comments into useful *"please check this"* comments.
+
+### A body template that prices speculation
+
+The second mechanism is a mandatory shape every finding must fill, where each empty slot carries a **mechanical penalty** — applied in code, not by the model's judgment.
+
+Try filing one. Toggle the slots off and watch what the contract does to your finding:
+
+<PrsEvidenceGate />
+
+That's the whole trick, and it's why I'd write this prompt before I'd shop for a better model: **a vague hunch cannot fill those slots.** It can't quote three verbatim lines, it can't name a concrete failing input, it can't say who's affected. So it either gets sharpened into a real finding or it never becomes a comment. The contract does the filtering that "please be accurate" never will.
+
+And for failure #2, one rule I wish I'd written on day one: **never flag a pattern the repo's own configuration mandates.** The team's written conventions are the source of truth, not something to argue with.
+
+---
+
+## Letting a cheap model decide what the expensive ones do
+
+Running every pass on every diff is wasteful. Running too few is dangerous. So a cheap **triage** model reads the diff first and picks which passes run and at what depth — with its authority bounded by code:
+
+- It **may** skip passes that would only add noise on a docs or config diff.
+- It **may not** skip the ones that matter: auth, money, DB-query and migration paths always get security + data + deep. Backend repos always get the full set. Large diffs or *any* triage error fall back to a full review. Quick Scan always runs.
+
+The pattern is worth stating on its own, because I've reused it in three places since:
+
+> **Let a cheap model propose. Let deterministic code constrain.**
+
+Triage can make a review cheaper. It can never make a money-path review shallower. The model's suggestion is an input to a decision, not the decision.
+
+---
+
+## Collapsing the duplicates
+
+Failure #3 — roughly 90 duplicates in a single audited week — needed its own machinery. Ten passes plus cross-file will independently rediscover overlapping issues, so the merge step collapses them through tiered similarity: same-line restatements, ±3-line rewordings, chain-drift (a restatement near a merged-away line but far from the canonical one), and cross-category reframings of one root cause — the same bug surfaced as both a `data` and a `tenancy` finding.
+
+The part I'm most glad I built is the guard around it: a **two-sided regression fixture**.
+
+One side holds real audited duplicates that *must* merge. The other holds legitimately distinct near-identical findings that *must survive*. Every fixture pair asserts its similarity score against the threshold it's meant to sit above or below.
+
+That second side is the one people skip, and it's the one that saves you. Without it, every tokenizer tweak and threshold nudge silently over-merges in production — swallowing real bugs — and your dedup metrics look *better* while your reviewer gets worse. With it, the same tweak fails loudly in tests.
+
+---
+
+## Where v2 landed
+
+End to end, a review became: **triage picks the passes → specialists fan out in parallel (schema-forced, high-effort, code-gated) → cross-file runs → merge and dedup → a comment budget clusters overflow nits → verify gate ([Part 5](/blog/prs-05-guarantees-and-self-review)) → post.**
+
+It rolled out fast — **0% to 94% of activated reviews on the new architecture within three weeks** — and it fixed the loudest problems.
+
+But it exposed the next one, and it's a genuinely uncomfortable trade. The rules of evidence keep the reviewer honest by forbidding claims about code it can't see. Which means it now **hedges hardest on the most valuable findings** — because the best observations depend on context sitting just outside the diff. The enum's full member list. The schema's real types. Who else calls the function you just changed.
+
+I'd made it trustworthy by making it quieter about exactly the things I most wanted it to say. Closing that gap without giving back the honesty took two entirely different context systems.
+
+*Next: [Teaching it to see past the diff →](/blog/prs-03-seeing-past-the-diff)*
