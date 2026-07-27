@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 
 /* ═════════════════════════════════════════════════════════
    Shared shell primitives for the "How I built PRS" series.
@@ -1194,6 +1194,293 @@ export function PrsSymbolMap() {
         <div>
           <span style={{ color: '#4ec9b0' }}>dictionary lookup</span>
           <span style={{ color: 'var(--color-amber-dim)' }}> — O(1)</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   7. PrsCostLedger — the real per-pass ledger PRS posts on
+      every review. Figures are from an actual PR.
+───────────────────────────────────────────────────────── */
+
+interface LedgerRow {
+  pass: string;
+  tier: 'strong' | 'cheap';
+  input: number;
+  cached: number;
+  output: number;
+  cost: number;
+  why: string;
+}
+
+const LEDGER: LedgerRow[] = [
+  { pass: 'Deep Review', tier: 'strong', input: 8851, cached: 0, output: 279, cost: 0.0263,
+    why: 'The one pass where extra reasoning genuinely changes which findings come out. Worth the strong model; it is also the pass that used to rubber-stamp, so it runs at forced high effort.' },
+  { pass: 'Cross-File', tier: 'strong', input: 5921, cached: 0, output: 27, cost: 0.0152,
+    why: 'Reasons over the symbol map from Part 3 — "you changed this, here is who depends on it." Relational reasoning, so it stays on the strong model.' },
+  { pass: 'Security · Tenancy', tier: 'cheap', input: 11136, cached: 0, output: 554, cost: 0.0145,
+    why: 'A breadth pass with a tight, well-specified lane. The rules-of-evidence contract does the precision work here, not the model tier — so the cheap model is enough.' },
+  { pass: 'Conventions · Arch', tier: 'cheap', input: 10147, cached: 0, output: 87, cost: 0.0107,
+    why: 'Checks the diff against the repo\'s written conventions. Pattern matching against supplied rules — exactly what a cheap model is good at.' },
+  { pass: 'Testing · Hygiene', tier: 'cheap', input: 8835, cached: 0, output: 91, cost: 0.0094,
+    why: 'Breadth pass. Note the output token count — focused passes that find nothing are cheap, which is what makes running ten of them affordable.' },
+  { pass: 'Quick Scan', tier: 'cheap', input: 8576, cached: 0, output: 85, cost: 0.0091,
+    why: 'Always runs, no matter what triage decides. The one pass that can never be skipped, so it had better be cheap.' },
+];
+
+const LEDGER_TOTAL = { input: 53466, cached: 0, output: 1123, cost: 0.0851 };
+
+export function PrsCostLedger() {
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>Per-pass cost ledger — posted on every review</span>
+        <span style={{ ...TITLE, color: 'var(--color-amber-dim)' }}>click a row</span>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, minWidth: 460 }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--color-amber-deep)' }}>
+              {['Pass', 'Model', 'Input', 'Cached', 'Output', 'Cost'].map((h, i) => (
+                <th key={h} style={{
+                  textAlign: i >= 2 ? 'right' : 'left',
+                  padding: '8px 12px',
+                  color: 'var(--color-amber-dim)',
+                  fontWeight: 400,
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {LEDGER.map(row => {
+              const isOpen = open === row.pass;
+              return (
+                <Fragment key={row.pass}>
+                  <tr
+                    onClick={() => setOpen(isOpen ? null : row.pass)}
+                    style={{
+                      cursor: 'pointer',
+                      background: isOpen ? 'var(--color-amber-sub)' : 'transparent',
+                      borderBottom: '1px solid rgba(58,37,8,0.5)',
+                    }}
+                  >
+                    <td style={{ padding: '8px 12px', color: 'var(--color-amber-text)', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: 'var(--color-amber-dim)', marginRight: 7 }}>{isOpen ? '▾' : '▸'}</span>
+                      {row.pass}
+                    </td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        color: row.tier === 'strong' ? 'var(--color-magenta)' : '#4ec9b0',
+                        fontSize: 10,
+                        border: `1px solid ${row.tier === 'strong' ? 'var(--color-magenta)' : '#4ec9b0'}`,
+                        padding: '1px 6px',
+                      }}>{row.tier}-tier</span>
+                    </td>
+                    <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--color-amber-dim)', fontVariantNumeric: 'tabular-nums' }}>{row.input.toLocaleString()}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--color-magenta)', fontVariantNumeric: 'tabular-nums' }}>{row.cached}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--color-amber-dim)', fontVariantNumeric: 'tabular-nums' }}>{row.output}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--color-amber)', fontVariantNumeric: 'tabular-nums' }}>${row.cost.toFixed(4)}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={6} style={{
+                        padding: '2px 12px 14px 30px',
+                        color: 'var(--color-amber-dim)',
+                        fontSize: 11.5,
+                        lineHeight: 1.7,
+                        background: 'var(--color-amber-sub)',
+                        borderBottom: '1px solid rgba(58,37,8,0.5)',
+                      }}>{row.why}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            <tr style={{ borderTop: '1px solid var(--color-amber-deep)' }}>
+              <td style={{ padding: '10px 12px', color: 'var(--color-amber)', fontWeight: 700 }}>Total</td>
+              <td />
+              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-amber)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{LEDGER_TOTAL.input.toLocaleString()}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-magenta)', fontWeight: 700 }}>{LEDGER_TOTAL.cached}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-amber)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{LEDGER_TOTAL.output.toLocaleString()}</td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--color-amber)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${LEDGER_TOTAL.cost.toFixed(4)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(13px,3vw,16px) clamp(13px,4vw,20px)',
+        fontSize: 11.5,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.75,
+      }}>
+        Two levers are visible right in this table. The{' '}
+        <strong style={{ color: 'var(--color-amber)' }}>model column</strong> is the first — two deep passes on
+        the strong tier, four breadth passes on the cheap one. And the{' '}
+        <strong style={{ color: 'var(--color-magenta)' }}>cached column reads 0</strong> because this was a first
+        review; on a re-review most of that input arrives at roughly a tenth of the price.
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   8. PrsPromptOrder — the prompt-prefix cache, reorderable.
+
+   The provider discounts the longest UNCHANGED prefix of a
+   request. So the cache survives only up to the first block
+   that changes between pushes. Move the diff up and watch the
+   discount evaporate.
+───────────────────────────────────────────────────────── */
+
+interface PromptBlock {
+  id: string;
+  label: string;
+  note: string;
+  /** does this block change between pushes on the same PR? */
+  volatile: boolean;
+  /** illustrative share of the prompt, for the proportion bar */
+  share: number;
+}
+
+const CANONICAL_ORDER: PromptBlock[] = [
+  { id: 'rules',   label: 'parameter prompt + base rules', note: 'identical per slug, every PR — the anchor', volatile: false, share: 22 },
+  { id: 'ctx',     label: 'PR context',                    note: 'stable across a PR\'s pushes',              volatile: false, share: 14 },
+  { id: 'learn',   label: 'learnings (semantic re-rank)',  note: 'can shift between pushes',                  volatile: true,  share: 8 },
+  { id: 'prior',   label: 'prior findings',                note: 'accumulate each run',                       volatile: true,  share: 6 },
+  { id: 'refdefs', label: '## REFERENCED DEFINITIONS',     note: 'per-PR (Part 3)',                           volatile: false, share: 10 },
+  { id: 'diff',    label: 'the diff',                      note: 'largest, and changes every single push',    volatile: true,  share: 40 },
+];
+
+export function PrsPromptOrder() {
+  const [order, setOrder] = useState<PromptBlock[]>(CANONICAL_ORDER);
+
+  function move(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[i], next[j]] = [next[j], next[i]];
+    setOrder(next);
+  }
+
+  // cache survives from the top until the first volatile block
+  const firstVolatile = order.findIndex(b => b.volatile);
+  const cachedCount = firstVolatile === -1 ? order.length : firstVolatile;
+  const cachedShare = order.slice(0, cachedCount).reduce((a, b) => a + b.share, 0);
+
+  const isCanonical = order.map(o => o.id).join() === CANONICAL_ORDER.map(o => o.id).join();
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>Prompt order — the cached prefix</span>
+        <button onClick={() => setOrder(CANONICAL_ORDER)} style={BTN_GHOST}>↺ SHIPPED ORDER</button>
+      </div>
+
+      <div style={{ padding: 'clamp(13px,4vw,18px)' }}>
+        {order.map((b, i) => {
+          const cached = i < cachedCount;
+          return (
+            <div
+              key={b.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '9px 11px',
+                marginBottom: 6,
+                border: `1px solid ${cached ? '#4ec9b0' : 'var(--color-amber-deep)'}`,
+                background: cached ? 'rgba(78,201,176,0.07)' : 'transparent',
+                transition: 'all 0.18s',
+              }}
+            >
+              <span style={{ fontSize: 10, color: 'var(--color-amber-dim)', width: 16, flexShrink: 0 }}>
+                {i + 1}.
+              </span>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, color: cached ? '#4ec9b0' : 'var(--color-amber-text)' }}>
+                  {b.label}
+                  {b.volatile && (
+                    <span style={{ color: 'var(--color-magenta)', fontSize: 9.5, marginLeft: 8, letterSpacing: '0.06em' }}>
+                      CHANGES PER PUSH
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginTop: 2 }}>{b.note}</div>
+              </div>
+
+              <span style={{
+                fontSize: 9.5,
+                letterSpacing: '0.06em',
+                color: cached ? '#4ec9b0' : 'var(--color-amber-dim)',
+                flexShrink: 0,
+                width: 62,
+                textAlign: 'right',
+              }}>
+                {cached ? '~90% OFF' : 'full price'}
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                <button onClick={() => move(i, -1)} disabled={i === 0}
+                  style={{ background: 'transparent', border: '1px solid var(--color-amber-deep)', color: i === 0 ? 'var(--color-amber-deep)' : 'var(--color-amber-dim)', cursor: i === 0 ? 'default' : 'pointer', fontSize: 9, lineHeight: 1, padding: '3px 6px', fontFamily: 'var(--font-mono)' }}>▲</button>
+                <button onClick={() => move(i, 1)} disabled={i === order.length - 1}
+                  style={{ background: 'transparent', border: '1px solid var(--color-amber-deep)', color: i === order.length - 1 ? 'var(--color-amber-deep)' : 'var(--color-amber-dim)', cursor: i === order.length - 1 ? 'default' : 'pointer', fontSize: 9, lineHeight: 1, padding: '3px 6px', fontFamily: 'var(--font-mono)' }}>▼</button>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* proportion bar */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, letterSpacing: '0.08em', color: 'var(--color-amber-dim)', marginBottom: 6 }}>
+            <span>SHARE OF PROMPT AT THE DISCOUNTED RATE</span>
+            <span style={{ color: cachedShare > 0 ? '#4ec9b0' : 'var(--color-magenta)' }}>{cachedShare}%</span>
+          </div>
+          <div style={{ height: 10, background: 'var(--color-bg2)', border: '1px solid var(--color-amber-deep)', display: 'flex' }}>
+            <div style={{ width: `${cachedShare}%`, background: '#4ec9b0', transition: 'width 0.25s' }} />
+            <div style={{ flex: 1, background: 'var(--color-magenta-soft)' }} />
+          </div>
+        </div>
+
+        <div style={{
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: '1px solid var(--color-amber-deep)',
+          fontSize: 12,
+          color: 'var(--color-amber-dim)',
+          lineHeight: 1.75,
+        }}>
+          {isCanonical ? (
+            <>
+              <strong style={{ color: '#4ec9b0' }}>This is the shipped order.</strong> Most-stable first,
+              the diff always last. The provider discounts the longest <em>unchanged prefix</em>, so every
+              block you place before a volatile one keeps its discount — and the diff, which is both the
+              largest block and the one that changes every push, can only ever be last.
+            </>
+          ) : cachedShare === 0 ? (
+            <>
+              <strong style={{ color: 'var(--color-magenta)' }}>Cache fully busted.</strong> A block that
+              changes every push now sits at position 1, so there is no unchanged prefix left to discount.
+              Every token in every pass is billed at full price on every re-review.
+            </>
+          ) : (
+            <>
+              <strong style={{ color: 'var(--color-amber)' }}>Partially busted.</strong> Putting a volatile
+              block before a stable one throws away the discount for <em>everything after it</em> — not just
+              for that block. That ordering comment is now the most load-bearing comment in the codebase.
+            </>
+          )}
         </div>
       </div>
     </div>
