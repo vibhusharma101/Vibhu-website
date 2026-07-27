@@ -877,3 +877,325 @@ export function PrsEvidenceGate() {
     </div>
   );
 }
+
+/* ─────────────────────────────────────────────────────────
+   5. PrsContextLens — the same bug, three states of context.
+
+   Shows why "authoritative context" is only sound when code
+   guarantees the block is whole: absent degrades safely, torn
+   does not.
+───────────────────────────────────────────────────────── */
+
+type LensState = 'absent' | 'complete' | 'torn';
+
+const LENS_TABS: { key: LensState; label: string }[] = [
+  { key: 'absent', label: 'No definitions' },
+  { key: 'complete', label: 'Complete block' },
+  { key: 'torn', label: 'Torn block' },
+];
+
+const LENS_BLOCKS: Record<LensState, string> = {
+  absent: '(nothing injected — the pass sees only the diff)',
+  complete: `## REFERENCED DEFINITIONS
+
+### enum Status
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  DELETED`,
+  torn: `## REFERENCED DEFINITIONS
+
+### enum Status
+  DRAFT
+  ACTIVE`,
+};
+
+export function PrsContextLens() {
+  const [state, setState] = useState<LensState>('absent');
+
+  const finding: Record<LensState, {
+    severity: string; category: string; conf: string; body: string;
+    tone: string; verdict: string; verdictColor: string; note: string;
+  }> = {
+    absent: {
+      severity: 'MINOR', category: 'UNVERIFIED_DATA', conf: '0.40',
+      body: 'I think an ARCHIVED record might be skipped here, but I cannot see the list of possible states, so I am not sure. Please double-check.',
+      tone: 'var(--color-amber-dim)',
+      verdict: 'SAFE — but easy to ignore',
+      verdictColor: 'var(--color-amber)',
+      note: 'Rule 10 doing its job. The reviewer is honest about the limit of what it can see, so it hedges. Nothing false gets said — but a capped-confidence question is the kind of comment engineers scroll past.',
+    },
+    complete: {
+      severity: 'MAJOR', category: 'DATA', conf: '0.85',
+      body: 'Status has four members — DRAFT, ACTIVE, ARCHIVED, DELETED. This switch handles three; an ARCHIVED record falls through and is left out of the total.',
+      tone: 'var(--color-amber-text)',
+      verdict: 'CORRECT — and checkable in thirty seconds',
+      verdictColor: '#4ec9b0',
+      note: 'Same bug, same model. The only difference is that it was allowed to know one enum. Because the block is shown and complete, the prompt lifts the hedge for symbols inside it — assert normally, the ground truth is right there.',
+    },
+    torn: {
+      severity: 'MAJOR', category: 'DATA', conf: '0.85',
+      body: 'Status has two members — DRAFT and ACTIVE. This switch handles a DELETED case that is not a valid member of the enum. Remove the dead branch.',
+      tone: 'var(--color-magenta)',
+      verdict: 'CONFIDENTLY WRONG — with a stamp of authority',
+      verdictColor: 'var(--color-magenta)',
+      note: 'The extractor crashed halfway and handed over a half-written enum. The model followed instructions correctly — the block said authoritative, so it asserted. This is the exact noise the feature exists to kill, now wearing a badge. Absent is safe. Torn is not.',
+    },
+  };
+
+  const f = finding[state];
+
+  return (
+    <div style={BOX}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-amber-deep)' }}>
+        {LENS_TABS.map(t => {
+          const active = state === t.key;
+          const color = t.key === 'torn' ? 'var(--color-magenta)' : t.key === 'complete' ? '#4ec9b0' : 'var(--color-amber)';
+          return (
+            <button
+              key={t.key}
+              onClick={() => setState(t.key)}
+              style={{
+                flex: 1,
+                padding: '10px 8px',
+                background: active ? 'var(--color-bg)' : 'var(--color-bg2)',
+                border: 'none',
+                borderBottom: active ? `2px solid ${color}` : '2px solid transparent',
+                color: active ? color : 'var(--color-amber-dim)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                letterSpacing: '0.07em',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+        <div style={{ padding: 'clamp(13px,4vw,18px)', borderRight: '1px solid var(--color-amber-deep)', background: 'var(--color-bg2)' }}>
+          <div style={{ ...TITLE, marginBottom: 10 }}>Injected into the prompt</div>
+          <pre style={{
+            margin: 0,
+            fontSize: 11,
+            lineHeight: 1.65,
+            color: state === 'torn' ? 'var(--color-magenta)' : state === 'absent' ? 'var(--color-amber-dim)' : '#4ec9b0',
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'var(--font-mono)',
+          }}>{LENS_BLOCKS[state]}</pre>
+          {state === 'torn' && (
+            <div style={{ marginTop: 10, fontSize: 10.5, color: 'var(--color-magenta)', lineHeight: 1.55 }}>
+              ⚠ truncated mid-enum — but still labelled authoritative
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: 'clamp(13px,4vw,18px)' }}>
+          <div style={{ ...TITLE, marginBottom: 10 }}>What the pass emits</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 9 }}>
+            <span style={{ fontSize: 10, padding: '2px 7px', border: '1px solid var(--color-amber-deep)', color: f.tone }}>{f.severity}</span>
+            <span style={{ fontSize: 10, color: f.tone }}>{f.category}</span>
+            <span style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginLeft: 'auto' }}>confidence {f.conf}</span>
+          </div>
+          <div style={{ fontSize: 12.5, color: f.tone, lineHeight: 1.65, borderLeft: `3px solid ${f.verdictColor}`, paddingLeft: 12 }}>
+            {f.body}
+          </div>
+          <div style={{ marginTop: 12, fontSize: 10.5, letterSpacing: '0.08em', color: f.verdictColor }}>
+            {f.verdict}
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,16px) clamp(13px,4vw,20px)',
+        fontSize: 12,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.7,
+      }}>
+        {f.note}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   6. PrsSymbolMap — store the simple facts, derive the view.
+───────────────────────────────────────────────────────── */
+
+interface FileRow {
+  path: string;
+  definitions: { name: string; kind: string; line: number }[];
+  refs: { name: string; line: number }[];
+}
+
+const FILE_ROWS: FileRow[] = [
+  {
+    path: 'services/total.js',
+    definitions: [{ name: 'computeTotal', kind: 'function', line: 2 }],
+    refs: [{ name: 'Order', line: 2 }],
+  },
+  {
+    path: 'routes/api.js',
+    definitions: [{ name: 'handleCheckout', kind: 'function', line: 8 }],
+    refs: [{ name: 'computeTotal', line: 11 }, { name: 'Order', line: 9 }],
+  },
+  {
+    path: 'models/order.js',
+    definitions: [{ name: 'Order', kind: 'class', line: 4 }],
+    refs: [],
+  },
+];
+
+const ALL_SYMBOLS = ['computeTotal', 'Order', 'handleCheckout'];
+
+export function PrsSymbolMap() {
+  const [selected, setSelected] = useState<string | null>('computeTotal');
+
+  // the reverse index is DERIVED at read time — never stored
+  const reverseIndex: Record<string, string[]> = {};
+  for (const row of FILE_ROWS) {
+    for (const r of row.refs) {
+      (reverseIndex[r.name] ||= []).push(row.path);
+    }
+  }
+
+  const dependents = selected ? reverseIndex[selected] ?? [] : [];
+  const definedIn = selected
+    ? FILE_ROWS.find(r => r.definitions.some(d => d.name === selected))?.path
+    : null;
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>Symbol map — pick a symbol the PR changed</span>
+      </div>
+
+      <div style={{ padding: 'clamp(13px,4vw,18px)', borderBottom: '1px solid var(--color-amber-deep)', display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+        {ALL_SYMBOLS.map(s => {
+          const active = selected === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setSelected(s)}
+              style={{
+                padding: '5px 12px',
+                background: active ? 'var(--color-amber)' : 'transparent',
+                color: active ? '#000' : 'var(--color-amber-dim)',
+                border: `1px solid ${active ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                cursor: 'pointer',
+                fontWeight: active ? 700 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {s}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+        {/* stored */}
+        <div style={{ padding: 'clamp(13px,4vw,18px)', borderRight: '1px solid var(--color-amber-deep)' }}>
+          <div style={{ ...TITLE, marginBottom: 4 }}>Stored — one row per file, per commit</div>
+          <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginBottom: 12, fontStyle: 'italic' }}>
+            self-contained: re-parse a file, overwrite its one row
+          </div>
+
+          {FILE_ROWS.map(row => {
+            const touches = selected
+              ? row.refs.some(r => r.name === selected) || row.definitions.some(d => d.name === selected)
+              : false;
+            return (
+              <div
+                key={row.path}
+                style={{
+                  border: `1px solid ${touches ? 'var(--color-amber-dim)' : 'var(--color-amber-deep)'}`,
+                  background: touches ? 'var(--color-amber-sub)' : 'transparent',
+                  padding: '9px 11px',
+                  marginBottom: 8,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ fontSize: 11.5, color: touches ? 'var(--color-amber)' : 'var(--color-amber-dim)', marginBottom: 5 }}>
+                  {row.path}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', lineHeight: 1.7 }}>
+                  <span style={{ color: '#4ec9b0' }}>defines</span>{' '}
+                  {row.definitions.length
+                    ? row.definitions.map(d => `${d.name}:${d.kind}`).join(', ')
+                    : '—'}
+                  <br />
+                  <span style={{ color: '#569cd6' }}>refs</span>{' '}
+                  {row.refs.length ? row.refs.map(r => r.name).join(', ') : '—'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* derived */}
+        <div style={{ padding: 'clamp(13px,4vw,18px)', background: 'var(--color-bg2)' }}>
+          <div style={{ ...TITLE, marginBottom: 4 }}>Derived at read time — never stored</div>
+          <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginBottom: 12, fontStyle: 'italic' }}>
+            rebuilt from the rows, so it cannot drift out of sync
+          </div>
+
+          {selected && (
+            <>
+              <pre style={{
+                margin: 0,
+                fontSize: 11,
+                lineHeight: 1.7,
+                color: 'var(--color-amber-text)',
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'var(--font-mono)',
+              }}>{`{ "${selected}": {\n    "referenced_in": [${dependents.map(d => `\n      "${d}"`).join(',')}${dependents.length ? '\n    ' : ''}]\n} }`}</pre>
+
+              <div style={{ marginTop: 16, paddingTop: 13, borderTop: '1px solid var(--color-amber-deep)', fontSize: 11.5, color: 'var(--color-amber-dim)', lineHeight: 1.7 }}>
+                {definedIn && (
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{ color: '#4ec9b0' }}>defined in</span> {definedIn}
+                  </div>
+                )}
+                {dependents.length > 0 ? (
+                  <div style={{ color: 'var(--color-amber-text)' }}>
+                    Change <code style={{ color: 'var(--color-amber)' }}>{selected}</code> and the cross-file
+                    pass gets told: <em>{dependents.join(', ')} {dependents.length > 1 ? 'call' : 'calls'} it and
+                    may still expect the old shape.</em>
+                  </div>
+                ) : (
+                  <div>Nothing else in the repo references this symbol — a change here is contained.</div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,15px) clamp(13px,4vw,20px)',
+        display: 'flex',
+        gap: 26,
+        flexWrap: 'wrap',
+        fontSize: 11,
+      }}>
+        <div>
+          <span style={{ color: 'var(--color-magenta)' }}>grep the whole repo</span>
+          <span style={{ color: 'var(--color-amber-dim)' }}> — O(N) per symbol, per review</span>
+        </div>
+        <div>
+          <span style={{ color: '#4ec9b0' }}>dictionary lookup</span>
+          <span style={{ color: 'var(--color-amber-dim)' }}> — O(1)</span>
+        </div>
+      </div>
+    </div>
+  );
+}
