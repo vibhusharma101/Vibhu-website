@@ -33,6 +33,8 @@ import {
   PrsEvidenceGate,
   PrsContextLens,
   PrsSymbolMap,
+  PrsCostLedger,
+  PrsPromptOrder,
 } from './PrsMdxComponents';
 
 export const mdxComponents = {
@@ -57,4 +59,6 @@ export const mdxComponents = {
   PrsEvidenceGate,
   PrsContextLens,
   PrsSymbolMap,
+  PrsCostLedger,
+  PrsPromptOrder,
 };

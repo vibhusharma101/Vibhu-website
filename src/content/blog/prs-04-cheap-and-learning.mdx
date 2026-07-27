@@ -1,0 +1,98 @@
+---
+title: "$2.55 a Review, and a Feedback Loop That Was Quietly Decoration"
+excerpt: "Part 4 of 5 — Measuring the real per-review cost before optimising anything, then routing spend five ways without ever making a review shallower. Plus the bug that had my learning loop writing rules into a store nothing read."
+date: "2026-07-28"
+readTime: "10 min read"
+tags: ["ai", "llms", "cost-optimization", "code-review", "prs-series"]
+published: true
+---
+
+*Part 4 of 5 — How I built PRS. [Part 3](/blog/prs-03-seeing-past-the-diff) gave the reviewer eyes beyond the diff. Ten passes plus two context layers on every push costs real money — and a reviewer that costs too much gets throttled, which quietly makes it a worse reviewer.*
+
+Two problems in this chapter, and between them they decide whether the thing survives past its first quarter: **what a review actually costs**, and whether the system gets *better* on its own or just stays where you left it.
+
+---
+
+## Measuring before optimising
+
+The first thing I did was refuse to guess.
+
+I also deliberately **skipped a paid synthetic bake-off.** Spending real money to prove savings on fake traffic tells you almost nothing about your actual diffs — your PRs have a shape, and that shape is the entire variable. So I read the number off live PRs instead:
+
+> **~$2.55 per full review**, pre-routing.
+
+Then I made the measurement permanent, which mattered more than the number. PRS posts a **per-pass cost ledger on every single review**, so a regression shows up immediately rather than at the end of a billing month.
+
+Here's a real one. Click any row for why that pass sits on the tier it does:
+
+<PrsCostLedger />
+
+That table is the whole optimisation strategy in miniature — and the reason I'd put telemetry in before touching a single knob. You can't route spend you can't see.
+
+---
+
+## Five levers, and why they multiply
+
+**1 · Model tiering.** Quick Scan, the specialists, and *all* incremental-push passes run on a frontier model that's roughly **54% cheaper per token**. The strongest model is reserved for Deep Review and first-activation depth, where the extra reasoning genuinely changes which findings come out. It's an Action input, so tuning cost is a config change, not a code change.
+
+**2 · Adaptive triage.** From [Part 2](/blog/prs-02-panel-of-specialists) — noise-only passes get skipped on trivial diffs, with the code-enforced guardrail that money, auth, DB and migration paths always get the full set.
+
+**3 · Prompt-prefix cache.** The provider discounts the longest *unchanged prefix* of a request by about 90%. So the prompt is ordered most-stable → least-stable, under a per-pass cache key.
+
+This one is worth playing with, because the failure mode is completely invisible until you look at a bill. Try moving the diff up:
+
+<PrsPromptOrder />
+
+**4 · Chunk sizing.** I raised the diff chunk size to 250KB. Bigger chunks mean fewer calls on large PRs — and because the stable prefix makes chunks 2..n roughly **3× cheaper** than chunk 1, halving the chunk count saves more than the bigger chunks cost.
+
+**5 · Budget guards.** A per-PR cap on the expensive full-review path (incremental push reviews stay unlimited and cheap), and rapid-push storms dedup via `git patch-id`, so force-pushing the same tree doesn't re-bill a full review.
+
+They stack multiplicatively rather than additively, which is the point: a typical re-review is a *cheaper model* running *fewer passes* over a *mostly-cached prompt* in *fewer chunks*.
+
+### The invariant I care about most
+
+Cutting cost usually means cutting quality. It doesn't here, and the reason is a design rule worth stealing:
+
+> **The savings come from *where* compute is spent — never from *how much thinking* is allowed.**
+
+Forced high reasoning effort, the verify gate, and the rules-of-evidence contract apply to every pass regardless of model tier. Triage can make a review cheaper. It can never make a money-path review shallower. Every lever above moves spend around; not one of them lowers the bar a finding has to clear.
+
+---
+
+## The other half: making it learn
+
+A reviewer that never learns repeats its mistakes forever. And a reviewer that repeats a mistake you have *already corrected* is one people stop reading — because now every comment carries the implicit question "did I already tell you about this?"
+
+**Feedback becomes rules.** When a developer pushes back — a 👎, or a reply like *"we do it this way on purpose"* — that exchange gets verified and mined into a structured rule, stored with the field that makes it generalise: **why**. Not just *"don't flag X"*, but the reason, so the rule can apply to something that isn't literally X.
+
+**The right rules show up at the right review.** Each pass pulls the rules relevant to the diff in front of it, ranked by embedding similarity against the *actual change* and filtered to that pass's parameter — a database-transaction rule surfaces on data-layer diffs, not on a CSS tweak. The prompt then treats them as binding: *do NOT flag what these tell you not to flag.*
+
+**Changes are graded against history.** Past human-audit verdicts from [Part 1](/blog/prs-01-the-audit-that-humbled-it) — Good, OK, Invalid — get minted into a golden-set benchmark, so a prompt or model change is scored against real history *before* it ships. You find out you made the reviewer worse in a test, not in production.
+
+**A weekly scoreboard picks the roadmap.** An automated job scores every finding across all four repos each week — accuracy, addressed-rate, duplicate count — and posts it to Slack. This is the steering wheel. The "~90 duplicates" reading drove the dedup engine; the "findings live outside the diff" reading drove both context systems in Part 3.
+
+---
+
+## The bug that taught me to distrust my own loop
+
+The most useful thing in this chapter is a failure.
+
+The learning loop had been shipped for a while and I believed it worked. It didn't. A subtle infrastructure issue meant extracted rules were **never actually applied at review time.** Rules were being mined, verified, embedded and written — dutifully, week after week — into a store that nothing read.
+
+Everything looked healthy from the outside. Rules existed. The count went up. The extraction pipeline had no errors. The only reason I caught it is that the weekly scoreboard had a number for repeat-mistake suppression, and that number simply wasn't moving.
+
+It took a five-PR chain to close, ending with an end-to-end verification on a live PR — an actual review where an actual rule demonstrably changed the actual output.
+
+The lesson generalises well past this system:
+
+> **A feedback loop you haven't verified end-to-end is decoration.**
+
+If you can't point at a specific run where a rule changed the behaviour, you don't have a learning loop. You have a database with good intentions. Writes are easy to observe and easy to celebrate; reads are where loops die, silently, because nothing errors when nobody's listening.
+
+There's a symmetry here I've come to like. The standard I demand of the reviewer's comments — prove it, quote it, name the failing case, don't guess — is exactly the standard the system itself has to be held to. I spent a year teaching a model not to assert things it hadn't verified, while asserting my own loop worked because I'd written the code for it.
+
+---
+
+At this point PRS is honest, well-fed, cheap, and improving. The remaining gap is the one between *usually right* and *trustworthy* — and that gap doesn't close with better behaviour. It closes with guarantees.
+
+*Next: [Guarantees, and the day it reviewed its own guardrail →](/blog/prs-05-guarantees-and-self-review)*
