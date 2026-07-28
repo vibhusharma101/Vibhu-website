@@ -27,6 +27,7 @@ import {
 } from './BlogMdxComponents';
 
 import {
+  PrsV1Pipeline,
   PrsAuditScoreboard,
   PrsRubberStamp,
   PrsFanOut,
@@ -55,6 +56,7 @@ export const mdxComponents = {
   KodemuxRouterDemo,
   KodemuxGuardTrace,
   // ── How I built PRS (5-part series) ──
+  PrsV1Pipeline,
   PrsAuditScoreboard,
   PrsRubberStamp,
   PrsFanOut,

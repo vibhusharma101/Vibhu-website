@@ -1,0 +1,117 @@
+---
+title: "We Shipped an AI Code Reviewer With Three Prompts. It Was Wrong Too Often and Quiet Too Long."
+excerpt: "Part 1 of 5 — The first version of PRS at Powerplay was three sequential LLM passes over a diff. It shipped, it caught real bugs, and it had two problems at once: about one in five comments was noise, and it stayed silent on the bugs that mattered most. Both had the same root cause."
+date: "2026-07-28"
+readTime: "9 min read"
+tags: ["ai", "code-review", "llms", "engineering", "prs-series"]
+published: true
+---
+
+At Powerplay we ship across four codebases — a Node backend, a React/TypeScript web app, a Kotlin Android app and a Swift iOS app — and human review time is the scarcest thing we have. Every PR sitting in the queue is a feature not shipped. Every PR that gets a rubber-stamp review is a bug heading for production.
+
+So I built **PRS**, an in-house AI code reviewer that reads every pull request and leaves inline comments like a careful senior engineer.
+
+This is the build log. Five parts, in the order it actually happened — what I shipped, what broke, what the numbers said, and what I changed because of them.
+
+Part 1 is the first version, and the two problems that turned out to be one problem.
+
+---
+
+## v1: three passes over a diff
+
+The first architecture was about as simple as it could be. A GitHub Action fires on an activation comment, fetches the diff, and runs three sequential LLM passes.
+
+Click through them — the third column is the one that matters:
+
+<PrsV1Pipeline />
+
+Around those three passes sat an operating model that has survived every rewrite since:
+
+- **Opt-in activation.** Nobody wants a bot barging into every PR uninvited.
+- **A label**, so subsequent pushes trigger *incremental* reviews of just the delta.
+- **Skip rules** for trivial or empty diffs, so it doesn't burn money arguing about a README typo.
+
+That part was right on day one. The reviewing was not.
+
+It shipped. It caught real bugs. People used it. And it was quietly losing their trust in two different directions at the same time.
+
+---
+
+## Problem one: about one in five comments was noise
+
+Rather than guess at how good it was, I ran a proper audit — seven weeks of merged PRs, every bot comment scored by hand as **Good**, **OK**, or **Invalid**.
+
+Try it yourself. Here are five comments in the shape of what I was reading:
+
+<PrsAuditScoreboard />
+
+**81.2% useful.** That sounds decent, and it isn't, because a reviewer isn't judged on its average — it's judged on its worst comment. One confident-but-wrong *"this field doesn't exist"* costs more trust than ten good comments earn, because now the engineer has to verify everything the bot says. Which is exactly the work it was supposed to save.
+
+The percentage wasn't the valuable part anyway. Grading 350 comments by hand forced me to categorise *why* the bad ones were bad, and four patterns fell out.
+
+### Failure 1 — confidently discussing code it cannot see
+
+A diff hands the model roughly three lines of context around each change. It cannot see the model schema, the enum's full member list, the imported helper, or the base class. Asked to review, it asserts things about all of them anyway. Sometimes right. Often guessing. This was the single largest source of invalid findings.
+
+### Failure 2 — flagging our own conventions as bugs
+
+Every codebase mandates patterns of its own: a required response wrapper, a dependency-injection idiom, a transaction discipline. The worst comments in the entire audit flagged a **mandated** pattern as a bug, then proposed "fixing" it into the exact thing our guidelines forbid.
+
+Nothing makes an engineer mute a tool faster than being lectured about house style by something that has never read the house rules.
+
+### Failure 3 — saying the same thing five times
+
+Three passes over one diff independently rediscover the same issue, phrased differently, on slightly different lines. One audited week carried roughly **90 duplicate findings**. Each can be individually correct and the wall of near-identical comments still reads as noise.
+
+### Failure 4 — skimming, then rubber-stamping
+
+This one I found in the logs, and it still bothers me:
+
+<PrsRubberStamp />
+
+A reviewer that quietly approves big changes isn't neutral. It's **worse than no reviewer**, because it manufactures confidence — the team believed a careful read had happened when nothing had.
+
+---
+
+## Problem two: it wasn't finding enough
+
+Here's the thing the 81.2% could never have told me, and the reason I distrust precision metrics on their own now.
+
+**A precision audit only grades the comments the reviewer actually wrote.** It is structurally blind to the ones it should have written and didn't. I could have driven that number to 95% by making the bot more timid, and shipped a strictly worse tool.
+
+And v1 was thin. On a typical pull request it left a handful of comments where a careful human reviewer would have left more — and the gaps weren't random. Read back through what each pass could see, and the pattern is obvious: **the findings it missed were the ones that required knowing something outside the changed lines.**
+
+- Does this switch handle every member of that enum? *Requires the enum.*
+- Does this construct the record in the shape the schema expects? *Requires the schema.*
+- Does anything else in the repo call this function and still expect the old signature? *Requires the rest of the repo.*
+
+Those are exactly the questions a senior reviewer answers, and exactly the ones a three-line window makes unanswerable.
+
+---
+
+## The two problems are the same problem
+
+This is the insight the whole rest of the series is built on, so I want to be precise about it.
+
+It's tempting to treat "too noisy" and "too quiet" as opposite failures that trade off against each other — tighten the bot up and it says less; loosen it and it says more nonsense. That framing is a trap, because it assumes the noise and the silence have different causes.
+
+They don't. Both come from the same place: **the model was asked to review code it could not see.**
+
+When it guessed and got lucky, that was a finding. When it guessed and got unlucky, that was noise. When it correctly declined to guess, that was silence. One root cause, three symptoms — and no amount of prompt-tuning moves all three in the right direction at once, because tuning only trades guessing for declining to guess.
+
+So the fix was never going to be a better model. Three of the four failure modes aren't intelligence failures at all. The model wasn't too dumb to know the enum's members; it was **never shown them**. It wasn't too dumb to respect our conventions; it was **never told them**. It didn't rubber-stamp for lack of capacity; it rubber-stamped because **nothing forced it to spend any**.
+
+That gave me the thesis for everything that followed:
+
+> Precision is an **epistemics** problem before it's a **model** problem. Constrain what the model may claim, give it exactly the context it needs to claim more, and prove every guarantee in code rather than convention.
+
+Which maps to the rest of this series:
+
+- **[Part 2](/blog/prs-02-repo-rules-and-stateless-passes)** — break the monolith into stateless, single-purpose passes, and teach one reviewer four codebases' house rules.
+- **[Part 3](/blog/prs-03-tree-sitter-cross-file)** — make cross-file review actually cross-file, with a tree-sitter map of the whole repository.
+- **[Part 4](/blog/prs-04-orchestrator-and-cost)** — put an orchestrator in front of it so we can afford to run all of that on every push.
+- **[Part 5](/blog/prs-05-pushing-accuracy-further)** — the work that never finishes: verify gates, a learning loop, and the day PRS reviewed its own guardrail.
+
+One last thing the audit gave me, which mattered more than the 81.2%: **the habit of scoring the reviewer on a schedule.** Every improvement in this series was chosen because a measurement demanded it. That discipline is the actual product. The code is downstream of it.
+
+*Next: [One reviewer, four codebases, four sets of house rules →](/blog/prs-02-repo-rules-and-stateless-passes)*

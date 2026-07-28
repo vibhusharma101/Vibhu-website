@@ -57,6 +57,109 @@ const BTN_GHOST: React.CSSProperties = {
 };
 
 /* ─────────────────────────────────────────────────────────
+   0. PrsV1Pipeline — the original three-pass reviewer, and
+      the ceiling each pass ran into.
+───────────────────────────────────────────────────────── */
+
+interface V1Pass {
+  name: string;
+  job: string;
+  sees: string;
+  ceiling: string;
+}
+
+const V1_PASSES: V1Pass[] = [
+  {
+    name: 'Quick Scan',
+    job: 'A fast, broad sweep for obvious problems.',
+    sees: 'The diff. Roughly three lines of context around each changed line.',
+    ceiling: 'Broad and shallow by construction. It catches what is visible on the changed line itself — and almost nothing that depends on knowing what the surrounding code actually is.',
+  },
+  {
+    name: 'Deep Review',
+    job: 'A slower, more careful read: security, correctness, performance, tests, style.',
+    sees: 'The same diff. Nothing more.',
+    ceiling: 'Five concerns in one prompt means it drifts — starts on security, wanders into naming. And with no schema, no enum members and no base class in front of it, its most valuable observations were guesses it stated as facts.',
+  },
+  {
+    name: 'Cross-File',
+    job: 'How the changed files connect to each other.',
+    sees: 'Only the files inside this diff.',
+    ceiling: 'The name promises a repo-wide view; the input is just the changed files. It cannot tell you who *else* in the codebase calls the function you changed, because that caller was never in the prompt.',
+  },
+];
+
+export function PrsV1Pipeline() {
+  const [sel, setSel] = useState(0);
+  const p = V1_PASSES[sel];
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>v1 — three passes, in sequence</span>
+        <span style={{ ...TITLE, color: 'var(--color-amber-dim)' }}>click a pass</span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', padding: 'clamp(16px,4vw,24px) clamp(13px,4vw,20px)', gap: 4, flexWrap: 'wrap' }}>
+        {V1_PASSES.map((pass, i) => (
+          <Fragment key={pass.name}>
+            <button
+              onClick={() => setSel(i)}
+              style={{
+                flex: '1 1 90px',
+                padding: '13px 8px',
+                background: sel === i ? 'var(--color-amber)' : 'transparent',
+                color: sel === i ? '#000' : 'var(--color-amber-dim)',
+                border: `1px solid ${sel === i ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                fontWeight: sel === i ? 700 : 400,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {pass.name}
+            </button>
+            {i < V1_PASSES.length - 1 && (
+              <span style={{ color: 'var(--color-amber-deep)', fontSize: 13, flexShrink: 0 }}>→</span>
+            )}
+          </Fragment>
+        ))}
+      </div>
+
+      <div style={{ padding: '0 clamp(13px,4vw,20px) clamp(16px,4vw,22px)' }}>
+        <div style={{ fontSize: 12.5, color: 'var(--color-amber-text)', lineHeight: 1.7, marginBottom: 14 }}>
+          {p.job}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px,1fr))', gap: 12 }}>
+          <div style={{ border: '1px solid var(--color-amber-deep)', padding: '11px 13px' }}>
+            <div style={{ ...TITLE, color: '#4ec9b0', marginBottom: 7 }}>What it could see</div>
+            <div style={{ fontSize: 11.5, color: 'var(--color-amber-dim)', lineHeight: 1.65 }}>{p.sees}</div>
+          </div>
+          <div style={{ border: '1px solid var(--color-magenta)', background: 'var(--color-magenta-soft)', padding: '11px 13px' }}>
+            <div style={{ ...TITLE, color: 'var(--color-magenta)', marginBottom: 7 }}>Where it hit a ceiling</div>
+            <div style={{ fontSize: 11.5, color: 'var(--color-amber-dim)', lineHeight: 1.65 }}>{p.ceiling}</div>
+          </div>
+        </div>
+
+        <div style={{
+          marginTop: 15,
+          paddingTop: 13,
+          borderTop: '1px solid var(--color-amber-deep)',
+          fontSize: 11.5,
+          color: 'var(--color-amber-dim)',
+          lineHeight: 1.7,
+        }}>
+          All three passes read the same narrow window. Stacking more prompts on the same input
+          gets you more <em>opinions</em> — not more <em>information</em>.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
    1. PrsAuditScoreboard — score the reviewer yourself.
 
    Five comments in the shape of the four failure modes the
@@ -199,6 +302,24 @@ export function PrsAuditScoreboard() {
             </div>
             <div style={{ fontSize: 12, color: 'var(--color-amber-dim)' }}>
               Which sounds decent, and isn&apos;t — a reviewer is judged on its worst comment, not its average.
+            </div>
+
+            <div style={{
+              marginTop: 22,
+              paddingTop: 18,
+              borderTop: '1px solid var(--color-amber-deep)',
+              textAlign: 'left',
+            }}>
+              <div style={{ ...TITLE, color: 'var(--color-magenta)', marginBottom: 8 }}>
+                And the half this number cannot see
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.7 }}>
+                A precision audit only grades the comments the reviewer <em>did</em> write. It is
+                structurally blind to the ones it should have written and didn&apos;t — the real bug
+                three files away that nobody was ever told about. On a typical PR the bot left a
+                handful of comments where a careful human would have left more, and no amount of
+                re-scoring the existing ones would have surfaced that.
+              </div>
             </div>
           </div>
         </div>
