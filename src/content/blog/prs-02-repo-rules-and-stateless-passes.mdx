@@ -1,0 +1,149 @@
+---
+title: "One Reviewer, Four Codebases, Four Different Definitions of Correct"
+excerpt: "Part 2 of 5 — Breaking the three-pass monolith into stateless single-purpose passes, moving each repo's house rules next to the code they describe, and writing the rules-of-evidence contract that made speculation structurally expensive."
+date: "2026-07-28"
+readTime: "10 min read"
+tags: ["ai", "code-review", "llms", "prompt-engineering", "prs-series"]
+published: true
+---
+
+*Part 2 of 5 — How I built PRS at Powerplay. [Part 1](/blog/prs-01-three-passes-and-an-audit) ended with a three-pass reviewer that was noisy and thin at the same time, and one diagnosis: it was being asked to review code it could not see, under rules it had never been told.*
+
+Two things had to change before anything else could. The reviewer needed to stop being one prompt with five jobs, and it needed to stop pretending our four codebases agree about what good code looks like.
+
+---
+
+## Stop asking one prompt to do everything
+
+The v1 Deep Review prompt said, roughly: *"review this diff for security, correctness, performance, tests, and style."*
+
+That isn't a task. It's five tasks in a trench coat, and the output showed it — the model starts on security, wanders into naming, and somewhere in the middle invents a finding that belongs to neither.
+
+So a review stopped being a sequence of big prompts and became a **fan-out of small, single-purpose ones**:
+
+<PrsFanOut />
+
+Each specialist is a **parameter pass** — one structured-output call scoped to exactly one concern. `security_tenancy` owns security and tenancy. Nothing else. It doesn't get an opinion on your variable names.
+
+The reason this works isn't subtle: a pass told *"you own this one thing"* goes deep on it and rarely invents findings outside its lane. Depth beats breadth when breadth means drift.
+
+### Stateless, by design
+
+The architectural decision I'd defend hardest here is that **every pass is a separate, isolated invocation that shares no state with its siblings.**
+
+```python
+# each pass is its own process, with its own slug, model, and gates
+run-parameter-pass.py --slug security_tenancy --model <cheap-tier-model> ...
+```
+
+It reads its inputs, writes its findings to its own file, and exits. It does not know the other passes exist. There is no shared session, no accumulating conversation, no ordering dependency.
+
+Three things fall out of that, and all three matter more than they sound:
+
+**Failure is contained.** A pass that throws, times out, or returns unparseable JSON writes an *empty* findings file and exits 0. Its siblings are unaffected; the merge step ignores the empty slug. One flaky reviewer never takes down a review — which matters far more when you're running ten of them than when you had three.
+
+**Parallelism is free.** Nothing coordinates, so nothing blocks. Ten passes cost about as much wall-clock as the slowest one.
+
+**Every pass is independently debuggable.** When a bad comment shows up, I can re-run exactly that one pass, on exactly that diff, in isolation, and get the same result. With a stateful multi-turn reviewer, "why did it say that" is often unanswerable. Here it's a single reproducible command.
+
+### Two guarantees inside each pass
+
+**Schema-forced output.** The call uses a JSON-Schema-constrained response, so the first character is `{`. No markdown, no "Sure, here's my review":
+
+```json
+{ "verdict": "comment",
+  "summary": "...",
+  "findings": [
+    { "path": "src/services/reportService.js", "line": 142,
+      "category": "DATA", "severity": "MAJOR", "confidence": 0.85,
+      "title": "...", "body": "..." }
+  ] }
+```
+
+**Forced reasoning effort.** The fix for Part 1's 2.5-second rubber stamp turned out to be one line:
+
+```python
+"reasoning": {"effort": "high"},
+# Without this, the model runs at its default effort and on large prompts will
+# skim and rubber-stamp `approve` (58K input tokens answered in ~2.5s / 27 tokens).
+```
+
+---
+
+## Move the rules next to the code they describe
+
+The second change fixed the failure mode that made people mute the bot fastest: **it kept flagging our own mandated patterns as bugs.**
+
+That's not really a model problem. Our four codebases genuinely disagree about what correct looks like. A required response wrapper is non-negotiable in the backend and meaningless in the iOS app. Clean-architecture layering is the law on Android and irrelevant in a Node route.
+
+You cannot encode that in one reviewer prompt. So I didn't. Each repo ships its own **manifest**: which passes run, what bar each has to clear, and the house rules that are mandated rather than optional.
+
+Pick a codebase:
+
+<PrsRepoManifest />
+
+Two details in there carry most of the weight.
+
+**The gates are enforced in code, not by asking nicely.** Each pass declares a `severity_floor` and a `confidence_min`, and both are applied *after* the model answers:
+
+```python
+severity_floor = entry.get("severity_floor", "MINOR")
+confidence_min = float(entry.get("confidence_min", 0.3))
+# findings below either are dropped before they can reach the merge step
+```
+
+The model is never trusted to enforce its own thresholds. It produces candidates; deterministic code decides what survives.
+
+**The shared Action stays stack-agnostic.** One engine, four repos, zero language-specific logic in the engine — everything that differs lives in the consuming repo. That's what made it possible to add a fourth codebase without touching the third.
+
+---
+
+## The rules of evidence
+
+Here's the part I didn't expect when I started. The single highest-leverage artifact in the entire system is **not** the architecture and **not** the model choice. It's the base prompt every pass inherits — which reads less like "review this code" and more like a rules-of-evidence document.
+
+Two mechanisms do most of the work.
+
+### The unverifiable-claim rule
+
+Internally it's "rule 10", and it goes straight at the biggest source of invalid findings:
+
+> If your premise depends on a symbol **not visible in your input** — an imported helper, a model schema, a constants file, a base class — you may not assert what it contains. Phrase it as an explicitly-marked question (*"confirm `Report._id` is an ObjectId — if it is a String, this is fine"*), cap `confidence` at 0.4, prefix the category with `UNVERIFIED_`, and never include a fix that hard-codes your guess.
+
+Security, tenancy and money concerns are never *dropped* — they get raised as that same hedged question, so a human still verifies. That one paragraph converted a whole class of confident-wrong comments into useful "please check this" comments.
+
+### A body template that prices speculation
+
+The second mechanism is a mandatory shape every finding must fill, where each empty slot carries a **mechanical penalty** applied in code.
+
+Try filing one. Toggle the slots off:
+
+<PrsEvidenceGate />
+
+That's the trick, and it's why I'd write this prompt before I'd shop for a better model. **A vague hunch cannot fill those slots.** It can't quote three verbatim lines, it can't name a concrete failing input, it can't say who's affected. So it either gets sharpened into a real finding or it never becomes a comment at all.
+
+---
+
+## Collapsing the duplicates
+
+Ten passes running on one diff will independently rediscover the same issue — that's the cost of removing coordination between them. One audited week carried roughly **90 duplicate findings**, and duplicates ranked as the single biggest drag on precision.
+
+So the merge step collapses them through tiered similarity: same-line restatements, ±3-line rewordings, chain-drift (a restatement near a merged-away line but far from the canonical one), and cross-category reframings of one root cause — the same bug surfaced as both a `data` and a `tenancy` finding.
+
+The part I'm most glad I built is the guard around it: a **two-sided regression fixture.** One side holds real audited duplicates that *must* merge. The other holds legitimately distinct near-identical findings that **must survive**.
+
+That second side is the one people skip, and it's the one that saves you. Without it, every threshold tweak silently over-merges in production — swallowing real bugs — while your duplicate metrics look *better*. You'd be optimising your way into a quieter, worse reviewer and congratulating yourself with a graph.
+
+---
+
+## Where this left it
+
+The reviewer was now honest and it knew our conventions. The noise problem was largely solved.
+
+The other half of Part 1's diagnosis wasn't. Rule 10 keeps the bot from asserting things it can't see — which means it now **hedges hardest on exactly the findings I wanted most**, because the best observations depend on context sitting just outside the diff.
+
+I'd made it trustworthy by making it quieter about the things most worth saying. The `Cross-File` pass was still, despite its name, reading only the files inside the diff.
+
+Fixing that needed a map of the entire repository.
+
+*Next: [Cross-file review needs a map, not a bigger prompt →](/blog/prs-03-tree-sitter-cross-file)*
