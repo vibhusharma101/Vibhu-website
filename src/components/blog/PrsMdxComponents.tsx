@@ -617,6 +617,170 @@ export function PrsRubberStamp() {
 }
 
 /* ─────────────────────────────────────────────────────────
+   2b. PrsRepoManifest — one engine, four codebases, four
+       sets of house rules. The repo owns its own config.
+───────────────────────────────────────────────────────── */
+
+interface RepoPass {
+  slug: string;
+  floor: string;
+  minConf: number;
+}
+
+interface RepoConfig {
+  key: string;
+  label: string;
+  lang: string;
+  color: string;
+  passes: RepoPass[];
+  rules: string[];
+}
+
+const REPOS: RepoConfig[] = [
+  {
+    key: 'backend', label: 'Backend', lang: 'Node.js', color: '#4ec9b0',
+    passes: [
+      { slug: 'security_tenancy', floor: 'MINOR', minConf: 0.3 },
+      { slug: 'data_layer', floor: 'MINOR', minConf: 0.3 },
+      { slug: 'performance_async', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'testing_hygiene', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.4 },
+    ],
+    rules: [
+      'Handlers must return through the shared response wrapper — never the bare object.',
+      'Write paths run inside the transaction discipline the repo defines; a bare write is the bug, not the wrapper.',
+      'Request scoping is derived, never taken from client input. Code that re-derives it is correct by design.',
+    ],
+  },
+  {
+    key: 'web', label: 'Web', lang: 'React / TypeScript', color: '#569cd6',
+    passes: [
+      { slug: 'security_tenancy', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'performance_async', floor: 'MINOR', minConf: 0.3 },
+      { slug: 'testing_hygiene', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.3 },
+    ],
+    rules: [
+      'Shared component primitives are mandated over hand-rolled equivalents.',
+      'Data fetching goes through the established client layer, not ad-hoc calls in components.',
+    ],
+  },
+  {
+    key: 'android', label: 'Android', lang: 'Kotlin', color: '#dcdcaa',
+    passes: [
+      { slug: 'architecture_layering', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'performance_async', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'testing_hygiene', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.3 },
+    ],
+    rules: [
+      'MVVM / Clean layering is mandated — a ViewModel reaching past its layer is the finding, not the abstraction.',
+      'Dependency injection follows the repo idiom; manual construction in a screen is the exception worth flagging.',
+    ],
+  },
+  {
+    key: 'ios', label: 'iOS', lang: 'Swift', color: '#ce9178',
+    passes: [
+      { slug: 'architecture_layering', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'performance_async', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.3 },
+    ],
+    rules: [
+      'Model decoding goes through the declared coding keys; a hand-written parser is worth a comment.',
+      'Concurrency follows the repo\'s structured pattern rather than ad-hoc dispatch.',
+    ],
+  },
+];
+
+export function PrsRepoManifest() {
+  const [sel, setSel] = useState('backend');
+  const repo = REPOS.find(r => r.key === sel)!;
+
+  return (
+    <div style={BOX}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-amber-deep)', flexWrap: 'wrap' }}>
+        {REPOS.map(r => {
+          const active = sel === r.key;
+          return (
+            <button
+              key={r.key}
+              onClick={() => setSel(r.key)}
+              style={{
+                flex: '1 1 80px',
+                padding: '10px 8px',
+                background: active ? 'var(--color-bg)' : 'var(--color-bg2)',
+                border: 'none',
+                borderBottom: active ? `2px solid ${r.color}` : '2px solid transparent',
+                color: active ? r.color : 'var(--color-amber-dim)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10.5,
+                letterSpacing: '0.07em',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: '10px clamp(13px,4vw,20px)', borderBottom: '1px solid var(--color-amber-deep)', fontSize: 10.5, color: 'var(--color-amber-dim)' }}>
+        <span style={{ color: repo.color }}>{repo.lang}</span>
+        {' · '}the shared Action is stack-agnostic; this manifest lives in the repo
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(255px,1fr))' }}>
+        <div style={{ padding: 'clamp(13px,4vw,18px)', borderRight: '1px solid var(--color-amber-deep)' }}>
+          <div style={{ ...TITLE, marginBottom: 11 }}>Passes this repo runs</div>
+          {repo.passes.map(p => (
+            <div key={p.slug} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 0',
+              borderBottom: '1px solid rgba(58,37,8,0.45)',
+              fontSize: 11,
+            }}>
+              <span style={{ color: 'var(--color-amber-text)', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{p.slug}</span>
+              <span style={{ color: 'var(--color-amber-dim)', fontSize: 9.5, flexShrink: 0 }}>≥{p.floor}</span>
+              <span style={{ color: 'var(--color-magenta)', fontSize: 9.5, flexShrink: 0 }}>conf {p.minConf}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginTop: 10, lineHeight: 1.6, fontStyle: 'italic' }}>
+            Both thresholds are enforced in code after the model answers — findings below either are
+            dropped before the merge step sees them.
+          </div>
+        </div>
+
+        <div style={{ padding: 'clamp(13px,4vw,18px)', background: 'var(--color-bg2)' }}>
+          <div style={{ ...TITLE, marginBottom: 11 }}>House rules — mandated, never a bug</div>
+          {repo.rules.map(r => (
+            <div key={r} style={{ display: 'flex', gap: 9, marginBottom: 11, fontSize: 11.5, lineHeight: 1.65 }}>
+              <span style={{ color: repo.color, flexShrink: 0 }}>§</span>
+              <span style={{ color: 'var(--color-amber-dim)' }}>{r}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,15px) clamp(13px,4vw,20px)',
+        fontSize: 11.5,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.7,
+      }}>
+        Same engine, four different definitions of “correct”. A pattern that is a finding in one repo is
+        <strong style={{ color: 'var(--color-amber)' }}> mandated</strong> in another — which is why the rules
+        cannot live in the reviewer. They have to live next to the code they describe.
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
    3. PrsFanOut — v1's sequential oracle vs v2's parallel panel.
 ───────────────────────────────────────────────────────── */
 
