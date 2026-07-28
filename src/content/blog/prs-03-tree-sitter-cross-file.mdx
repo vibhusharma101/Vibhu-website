@@ -1,0 +1,163 @@
+---
+title: "Our Cross-File Pass Couldn't See Other Files. Tree-sitter Fixed That."
+excerpt: "Part 3 of 5 — The pass named Cross-File only ever received the files inside the diff. Making it real meant parsing every source file in every repo with tree-sitter, and being very careful about which half of that map we stored."
+date: "2026-07-28"
+readTime: "10 min read"
+tags: ["ai", "code-review", "tree-sitter", "llms", "prs-series"]
+published: true
+---
+
+*Part 3 of 5 — How I built PRS at Powerplay. [Part 2](/blog/prs-02-repo-rules-and-stateless-passes) made the reviewer honest and taught it four codebases' house rules. It was still, however, blind past the diff.*
+
+There's an embarrassing detail in Part 1 that I glossed over, and it's the one this post exists to fix.
+
+We had a pass called **Cross-File**. Its job, on paper, was to reason about how a change ripples through the codebase. Its actual input was *the files contained in the diff*.
+
+So it could tell you that two files you'd just edited disagreed with each other. It could not tell you that a third file — one you hadn't touched, one you'd maybe never opened — called the function you just changed and still expected the old return shape.
+
+That third file is where the bugs live. A reviewer that can only see what you edited will never catch the consequence of what you edited.
+
+Fixing it meant PRS needed a map of the entire repository.
+
+---
+
+## Parse everything, in every language
+
+The requirement was awkward: build a symbol map across a Node backend, a React/TypeScript web app, a Kotlin Android app and a Swift iOS app — without writing and maintaining four separate parsers.
+
+Regex was never an option. You cannot reliably distinguish a function *definition* from a function *call* from a string that happens to contain the function's name, and a symbol map that's wrong is worse than no map, because it feeds confident nonsense into a reviewer.
+
+So: **tree-sitter**, via a language pack that bundles grammars for all our stacks. One code path reads Python, TypeScript, Kotlin, Swift, Go and Java. For each file, walk the parse tree and record what it **defines** and what it **references**:
+
+```python
+LANG_BY_EXT = { ".py":"python", ".ts":"typescript", ".tsx":"tsx", ".js":"javascript",
+                ".kt":"kotlin", ".swift":"swift", ".go":"go", ".java":"java", ... }
+
+DEFINITION_NODES["typescript"] = {
+    "function_declaration":"function", "class_declaration":"class",
+    "interface_declaration":"interface", "enum_declaration":"enum", ... }
+# walk the tree once for definitions, once for references — plain depth-first,
+# "first child → next sibling → parent"
+```
+
+Adding a language is a table entry, not a project.
+
+---
+
+## The decision that matters: store facts, derive views
+
+Here's the part I'd bring to a design review, because it's where this could have quietly rotted.
+
+The thing the reviewer actually wants to ask is *"which files reference `computeTotal`?"* — a reverse index, symbol → files. The obvious move is to store that, since it's what you query.
+
+I store the opposite: **one row per file, per commit**, listing what that file defines and what it references. The reverse index is **derived at read time and never persisted.**
+
+Pick a symbol and watch both halves:
+
+<PrsSymbolMap />
+
+The reason is maintenance under change, and it's worth spelling out.
+
+A **per-file row is self-contained.** When a file changes, you re-parse it and overwrite its single row. Anything it stopped referencing disappears for free — it's simply absent from the new list. There is no cleanup step, so there is no cleanup step to forget.
+
+The **reverse index has the opposite shape.** It pools contributions from every file in the repo, so one file edit ripples into scattered entries: add this file to `computeTotal`'s list, remove it from `Order`'s, then check whether anything *else* in this file still references `Order` before you remove it. Miss one and nothing crashes — the map just **silently lies**, and a silently wrong dependency map is a machine for generating confident, wrong blast-radius claims.
+
+> **Store the simple facts. Derive the fast lookup on read.**
+
+It also makes caching genuinely incremental. Rows are keyed by commit SHA, so a push re-parses only the files in its diff and reuses everything else.
+
+And the payoff is the query. *"Which files use `computeTotal`?"* becomes one dictionary lookup — **O(1)** — instead of grepping the repository, **O(N)**, per symbol, per review.
+
+---
+
+## What the Cross-File pass became
+
+With the map in place, the pass finally does what its name claims. The flow is:
+
+1. Take the symbols the PR **changed** — not the files, the symbols.
+2. Look up their dependents in the derived index.
+3. Rank them, and hand the reviewer the ones that matter.
+
+So instead of *"these two edited files disagree"*, it can say:
+
+> You changed `computeTotal`. `routes/api.js` calls it and still expects the old shape.
+
+That's a finding v1 was structurally incapable of producing, no matter which model I pointed at it. Not because it wasn't smart enough — because `routes/api.js` was never in the prompt.
+
+---
+
+## The other half: exact definitions, per PR
+
+The symbol map gives **breadth** — what across the repo relates to this change. It doesn't give **depth**: the exact member list of the enum this diff branches on, or the precise shape of the record it constructs.
+
+That's a second, much smaller system. For each PR, a per-repo script extracts the definitions the diff actually names and injects them into the prompt as an authoritative block. For symbols in that block, rule 10's hedge is **lifted** — assert normally, because you've been handed the ground truth.
+
+The shared Action stays stack-agnostic; it exposes exactly one input and each repo ships its own extractor:
+
+```yaml
+# consumer repo's workflow — the ONE generic input
+referenced-definitions-command: 'python3 .github/prs-refdef.py'
+```
+
+Same bug, same model, same diff. The only variable is whether the reviewer was allowed to know one enum — and there's a third state that nearly bit me:
+
+<PrsContextLens />
+
+### Why "authoritative" is a loaded word
+
+The prompt now tells the model this block is authoritative: *don't claim a missing enum case unless you've enumerated the full member set shown here.*
+
+That instruction is only **sound if the block is complete.**
+
+If the extractor crashed halfway and handed over a torn, half-written enum, the model would follow its instructions *correctly* and emit confident, false "missing member" findings — carrying the authority I'd granted the block. That's strictly worse than where I started in Part 1, because now the noise has a badge.
+
+So the trust boundary lives in code. The resolver runs caged:
+
+```bash
+# any failure discards partial output entirely
+timeout 120 bash -c "$REFDEF_CMD" || {
+  echo "soft-failed — passes run without it"
+  : > "$OUTPUT_FILE"
+}
+```
+
+And again at injection time, before a single token reaches a prompt:
+
+```python
+# prepare_referenced_definitions()
+#  1. header missing?          → prepend "## REFERENCED DEFINITIONS" (rules key on it)
+#  2. over REFDEF_MAX_BYTES?   → clamp at the last COMPLETE ## / ### section boundary,
+#                                then append an explicit note: "further definitions were
+#                                dropped — rule 10 applies to symbols not shown"
+#  3. no section boundary fits → drop the block entirely
+#                                (torn-but-authoritative is worse than absent)
+```
+
+Note what step 2 refuses to do: it never truncates mid-section. It clamps to the last *complete* boundary and explicitly tells the model more was dropped, handing those symbols back to rule 10. If no boundary fits, the whole block goes.
+
+> **Never tell a model to trust something unless code guarantees that thing is whole.**
+
+A *missing* piece is safe — it degrades to a hedged question the system already handles. A *broken* piece treated as authoritative is the dangerous case.
+
+Four repos means four extractors — ORM schemas and enums for the backend; TypeScript interfaces, types and enums for web; Kotlin data classes, enums and sealed hierarchies for Android; Swift structs, `CodingKeys` and enum cases for iOS. Each is dependency-free, byte-budgeted, and soft-fails to empty.
+
+Each taught me a parsing lesson the hard way. The Android extractor initially false-matched Compose built-ins like `Text` and `Default` as repo symbols — which matters enormously when the output is labelled authoritative. A false symbol inside a trusted block is the torn-enum problem wearing a different hat.
+
+---
+
+## Two systems, one job
+
+| | Definition resolver | Tree-sitter symbol map |
+|---|---|---|
+| **Question** | the exact schema/enum this diff *names*? | which files across the repo *relate* to this change? |
+| **Scope** | tiny, per-PR, injected inline | whole-repo, cached per commit |
+| **Gives** | depth | breadth |
+| **Approach** | dependency-free per-repo script, soft-fails to empty | real parser — correctness over the whole tree matters |
+
+Together they closed the second half of Part 1's diagnosis. The reviewer stopped being thin, because the questions it used to be unable to answer — *does this handle every enum member, does this match the schema, who else calls this* — became questions it had the inputs to answer.
+
+And because rule 10 still governs everything, it only ever speaks confidently about context that code can prove it was actually shown.
+
+There was one catch. Parsing whole repositories, resolving definitions per PR, and fanning out ten passes on every push is not cheap — and a reviewer that costs too much gets throttled, which quietly turns it back into a worse reviewer.
+
+*Next: [The orchestrator, and what it cost →](/blog/prs-04-orchestrator-and-cost)*
