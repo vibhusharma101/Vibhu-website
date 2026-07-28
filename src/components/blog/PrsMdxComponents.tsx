@@ -1486,6 +1486,170 @@ export function PrsSymbolMap() {
 }
 
 /* ─────────────────────────────────────────────────────────
+   6b. PrsOrchestrator — a cheap model proposes, deterministic
+       code constrains. Triage can make a review cheaper; it
+       can never make a money-path review shallower.
+───────────────────────────────────────────────────────── */
+
+const ALL_PASSES = [
+  'quick_scan', 'security_tenancy', 'data_layer', 'performance_async',
+  'testing_hygiene', 'conventions_arch', 'deep_review', 'cross_file',
+];
+
+interface Scenario {
+  key: string;
+  label: string;
+  proposed: string[];
+  /** passes code force-adds regardless of what triage said */
+  forced: string[];
+  rule: string | null;
+  note: string;
+}
+
+const SCENARIOS: Scenario[] = [
+  {
+    key: 'docs', label: 'README / docs only',
+    proposed: ['quick_scan', 'conventions_arch'],
+    forced: [],
+    rule: null,
+    note: 'Nothing here can break auth, corrupt data or leak money. Triage skips the passes that would only generate noise, and code has no reason to object.',
+  },
+  {
+    key: 'css', label: 'CSS tweak',
+    proposed: ['quick_scan', 'conventions_arch', 'performance_async'],
+    forced: [],
+    rule: null,
+    note: 'A data-layer pass on a stylesheet produces confident opinions about nothing. Skipped.',
+  },
+  {
+    key: 'auth', label: 'Auth middleware change',
+    proposed: ['quick_scan', 'conventions_arch'],
+    forced: ['security_tenancy', 'data_layer', 'deep_review'],
+    rule: 'Auth path → security + data + deep, always.',
+    note: 'Triage looked at a small diff and proposed a cheap review. Code overruled it. This is the case the whole design exists for — the model\'s judgment is an input to the decision, never the decision.',
+  },
+  {
+    key: 'migration', label: 'DB migration',
+    proposed: ['quick_scan', 'data_layer'],
+    forced: ['security_tenancy', 'deep_review', 'cross_file'],
+    rule: 'Migration path → security + data + deep, always.',
+    note: 'Migrations are irreversible in a way most code is not. The floor here is not negotiable by a cheap model reading a diff.',
+  },
+  {
+    key: 'large', label: 'Large diff',
+    proposed: ['quick_scan', 'conventions_arch'],
+    forced: ALL_PASSES,
+    rule: 'Diff over the size threshold → full review.',
+    note: 'Above a certain size, triage is guessing about too much surface area. The fallback is everything.',
+  },
+  {
+    key: 'error', label: 'Triage itself errored',
+    proposed: [],
+    forced: ALL_PASSES,
+    rule: 'Any triage error → full review.',
+    note: 'The orchestrator failing is never allowed to mean "nothing to review here". An unavailable opinion falls back to the expensive, safe answer — not the cheap one.',
+  },
+];
+
+export function PrsOrchestrator() {
+  const [sel, setSel] = useState('docs');
+  const s = SCENARIOS.find(x => x.key === sel)!;
+
+  const final = ALL_PASSES.filter(
+    p => p === 'quick_scan' || s.proposed.includes(p) || s.forced.includes(p)
+  );
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>Orchestrator — pick what landed in the PR</span>
+        <span style={{ ...TITLE, color: 'var(--color-amber)' }}>{final.length} / {ALL_PASSES.length} passes</span>
+      </div>
+
+      <div style={{ padding: 'clamp(12px,3vw,16px) clamp(13px,4vw,18px)', borderBottom: '1px solid var(--color-amber-deep)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {SCENARIOS.map(x => {
+          const active = sel === x.key;
+          return (
+            <button
+              key={x.key}
+              onClick={() => setSel(x.key)}
+              style={{
+                padding: '5px 11px',
+                background: active ? 'var(--color-amber)' : 'transparent',
+                color: active ? '#000' : 'var(--color-amber-dim)',
+                border: `1px solid ${active ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10.5,
+                cursor: 'pointer',
+                fontWeight: active ? 700 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {x.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: 'clamp(14px,4vw,20px)' }}>
+        {/* pass grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))', gap: 6, marginBottom: 16 }}>
+          {ALL_PASSES.map(p => {
+            const isForced = s.forced.includes(p);
+            const isProposed = s.proposed.includes(p);
+            const isAlways = p === 'quick_scan';
+            const on = isForced || isProposed || isAlways;
+
+            const color = isForced ? 'var(--color-magenta)' : on ? '#4ec9b0' : 'var(--color-amber-deep)';
+            return (
+              <div key={p} style={{
+                border: `1px solid ${on ? color : 'var(--color-amber-deep)'}`,
+                background: isForced ? 'var(--color-magenta-soft)' : on ? 'rgba(78,201,176,0.07)' : 'transparent',
+                padding: '7px 9px',
+                opacity: on ? 1 : 0.4,
+                transition: 'all 0.18s',
+              }}>
+                <div style={{ fontSize: 10.5, color: on ? color : 'var(--color-amber-dim)', wordBreak: 'break-word' }}>
+                  {p}
+                </div>
+                <div style={{ fontSize: 8.5, color: 'var(--color-amber-dim)', marginTop: 3, letterSpacing: '0.05em' }}>
+                  {isForced ? 'FORCED BY CODE' : isAlways ? 'ALWAYS RUNS' : isProposed ? 'triage chose' : 'skipped'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {s.rule && (
+          <div style={{
+            border: '1px solid var(--color-magenta)',
+            background: 'var(--color-magenta-soft)',
+            padding: '10px 13px',
+            marginBottom: 14,
+          }}>
+            <div style={{ ...TITLE, color: 'var(--color-magenta)', marginBottom: 5 }}>Code-enforced floor</div>
+            <div style={{ fontSize: 12, color: 'var(--color-amber-text)' }}>{s.rule}</div>
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.75 }}>{s.note}</div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,15px) clamp(13px,4vw,20px)',
+        fontSize: 11.5,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.7,
+      }}>
+        <strong style={{ color: 'var(--color-amber)' }}>Let a cheap model propose. Let deterministic code
+        constrain.</strong> Triage can make a review cheaper. It can never make a money-path review shallower.
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
    7. PrsCostLedger — the real per-pass ledger PRS posts on
       every review. Figures are from an actual PR.
 ───────────────────────────────────────────────────────── */
