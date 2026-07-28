@@ -1,6 +1,6 @@
 ---
 title: "We Shipped an AI Code Reviewer With Three Prompts. It Was Wrong Too Often and Quiet Too Long."
-excerpt: "Part 1 of 5 — The first version of PRS at Powerplay was three sequential LLM passes over a diff. It shipped, it caught real bugs, and it had two problems at once: about one in five comments was noise, and it stayed silent on the bugs that mattered most. Both had the same root cause."
+excerpt: "Part 1 of 5 — The first version of PRS at Powerplay was three sequential LLM passes over a diff. It shipped, it caught real bugs, and it had two problems at once: too many of its comments were noise, and it stayed silent on the bugs that mattered most. Both had the same root cause."
 date: "2026-07-28"
 readTime: "9 min read"
 tags: ["ai", "code-review", "llms", "engineering", "prs-series"]
@@ -37,7 +37,7 @@ It shipped. It caught real bugs. People used it. And it was quietly losing their
 
 ---
 
-## Problem one: about one in five comments was noise
+## Problem one: too many of its comments were noise
 
 Rather than guess at how good it was, I ran a proper audit — seven weeks of merged PRs, every bot comment scored by hand as **Good**, **OK**, or **Invalid**.
 
@@ -45,9 +45,9 @@ Try it yourself. Here are five comments in the shape of what I was reading:
 
 <PrsAuditScoreboard />
 
-**81.2% useful.** That sounds decent, and it isn't, because a reviewer isn't judged on its average — it's judged on its worst comment. One confident-but-wrong *"this field doesn't exist"* costs more trust than ten good comments earn, because now the engineer has to verify everything the bot says. Which is exactly the work it was supposed to save.
+Enough of them came back **Invalid** that the ratio would have looked survivable on a dashboard and didn't feel survivable in practice. That gap is the important part. A reviewer isn't judged on its average — it's judged on its worst comment. One confident-but-wrong *"this field doesn't exist"* costs more trust than ten good comments earn, because now the engineer has to verify everything the bot says. Which is exactly the work it was supposed to save.
 
-The percentage wasn't the valuable part anyway. Grading 350 comments by hand forced me to categorise *why* the bad ones were bad, and four patterns fell out.
+The ratio was never the valuable output anyway. Grading comments by hand forced me to categorise *why* the bad ones were bad, and four patterns fell out.
 
 ### Failure 1 — confidently discussing code it cannot see
 
@@ -75,9 +75,9 @@ A reviewer that quietly approves big changes isn't neutral. It's **worse than no
 
 ## Problem two: it wasn't finding enough
 
-Here's the thing the 81.2% could never have told me, and the reason I distrust precision metrics on their own now.
+Here's the thing that audit could never have told me, and the reason I distrust precision metrics on their own now.
 
-**A precision audit only grades the comments the reviewer actually wrote.** It is structurally blind to the ones it should have written and didn't. I could have driven that number to 95% by making the bot more timid, and shipped a strictly worse tool.
+**A precision audit only grades the comments the reviewer actually wrote.** It is structurally blind to the ones it should have written and didn't. I could have driven that ratio close to perfect by making the bot more timid, and shipped a strictly worse tool.
 
 And v1 was thin. On a typical pull request it left a handful of comments where a careful human reviewer would have left more — and the gaps weren't random. Read back through what each pass could see, and the pattern is obvious: **the findings it missed were the ones that required knowing something outside the changed lines.**
 
@@ -112,6 +112,6 @@ Which maps to the rest of this series:
 - **[Part 4](/blog/prs-04-orchestrator-and-cost)** — put an orchestrator in front of it so we can afford to run all of that on every push.
 - **[Part 5](/blog/prs-05-pushing-accuracy-further)** — the work that never finishes: verify gates, a learning loop, and the day PRS reviewed its own guardrail.
 
-One last thing the audit gave me, which mattered more than the 81.2%: **the habit of scoring the reviewer on a schedule.** Every improvement in this series was chosen because a measurement demanded it. That discipline is the actual product. The code is downstream of it.
+One last thing the audit gave me, which mattered more than any ratio it produced: **the habit of scoring the reviewer on a schedule.** Every improvement in this series was chosen because a measurement demanded it. That discipline is the actual product. The code is downstream of it.
 
 *Next: [One reviewer, four codebases, four sets of house rules →](/blog/prs-02-repo-rules-and-stateless-passes)*

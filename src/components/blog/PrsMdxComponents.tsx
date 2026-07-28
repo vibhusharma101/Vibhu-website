@@ -295,13 +295,11 @@ export function PrsAuditScoreboard() {
             marginLeft: 'auto',
             marginRight: 'auto',
           }}>
-            I did this by hand for roughly <strong style={{ color: 'var(--color-amber)' }}>350 comments</strong> across
-            seven weeks of merged PRs. The result:
-            <div style={{ fontSize: 34, color: 'var(--color-magenta)', fontWeight: 700, margin: '16px 0 6px' }}>
-              81.2% useful
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--color-amber-dim)' }}>
-              Which sounds decent, and isn&apos;t — a reviewer is judged on its worst comment, not its average.
+            I did this by hand for hundreds of comments across seven weeks of merged pull
+            requests — every one graded Good, OK or Invalid.
+            <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', marginTop: 12 }}>
+              Enough came back Invalid to matter. And the ratio was never the point: a reviewer
+              is judged on its worst comment, not its average.
             </div>
 
             <div style={{
