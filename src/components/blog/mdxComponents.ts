@@ -38,6 +38,7 @@ import {
   PrsOrchestrator,
   PrsCostLedger,
   PrsPromptOrder,
+  PrsLearningLoop,
   PrsConvergence,
   PrsFailClosed,
 } from './PrsMdxComponents';
@@ -69,6 +70,7 @@ export const mdxComponents = {
   PrsOrchestrator,
   PrsCostLedger,
   PrsPromptOrder,
+  PrsLearningLoop,
   PrsConvergence,
   PrsFailClosed,
 };
