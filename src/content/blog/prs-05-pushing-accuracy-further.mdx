@@ -1,0 +1,130 @@
+---
+title: "Accuracy Isn't a Milestone. Here's What Keeps Pushing On It."
+excerpt: "Part 5 of 5 — A weekly scoreboard that picks the roadmap, a learning loop that was silently decoration for weeks, an adversarial gate that may only downgrade confidence, and the day PRS found 54 real bugs in the guardrail built to enforce its own correctness."
+date: "2026-07-28"
+readTime: "11 min read"
+tags: ["ai", "code-review", "reliability", "engineering", "prs-series"]
+published: true
+---
+
+*Part 5 of 5 — How I built PRS at Powerplay. Four posts got to a reviewer that's honest, well-informed, and cheap enough to leave running everywhere. This one is about the fact that none of that stays true on its own.*
+
+Every previous post ends with a fix that worked. This one doesn't have that shape, because accuracy isn't a thing you ship — it's a thing that decays unless something keeps pushing.
+
+Codebases change. Conventions change. The team's tolerance for noise changes. A reviewer tuned perfectly for March is quietly mediocre by September, and nobody files a ticket about it — they just start skimming past its comments.
+
+So the last chunk of work wasn't a feature. It was four systems whose only job is to keep the number moving in the right direction.
+
+---
+
+## 1. A weekly scoreboard, because vibes decay
+
+The steering wheel is an automated job that scores every finding across all four repos, every week — accuracy, addressed-rate, duplicate count — and posts it to Slack.
+
+That cadence is deliberate, and swapping a gentle occasional audit for a harsh weekly one was itself one of the biggest improvements I made. A quarterly review tells you something went wrong last quarter. A weekly one tells you which change did it.
+
+Every feature in this series traces back to a reading on that board:
+
+- *"~90 duplicates this week"* → the dedup engine and its two-sided fixture ([Part 2](/blog/prs-02-repo-rules-and-stateless-passes)).
+- *"the findings we're missing all live outside the diff"* → the tree-sitter map and the definition resolver ([Part 3](/blog/prs-03-tree-sitter-cross-file)).
+- *"repeat-mistake suppression isn't moving"* → the bug in the next section.
+
+The scoreboard is also what makes it safe to be aggressive elsewhere. I could push hard on cost in [Part 4](/blog/prs-04-orchestrator-and-cost) precisely because a quality regression would surface within a week rather than at some undefined future moment when trust had already gone.
+
+---
+
+## 2. A learning loop — and the weeks it spent as decoration
+
+A reviewer that repeats a mistake you've already corrected is one people stop reading, because every comment now carries the implicit question *"did I already tell you about this?"*
+
+So pushback becomes doctrine. When a developer replies *"we do it this way on purpose"*, that exchange gets verified and mined into a structured rule, stored with the field that makes it generalise: **why**.
+
+Then at review time, each pass pulls the rules relevant to the diff in front of it — ranked by embedding similarity against the actual change and filtered to that pass's parameter, so a database-transaction rule surfaces on data-layer diffs and not on a CSS tweak.
+
+That's the design. Here's what was actually running:
+
+<PrsLearningLoop />
+
+The loop had been shipped for weeks and I believed it worked. It didn't. A subtle infrastructure issue meant extracted rules were **never applied at review time.** Rules were mined, verified, embedded and written — dutifully — into a store that nothing read.
+
+What makes this worth writing down is how *healthy* it looked. Rules existed. The count went up. The extraction pipeline had zero errors, because nothing errors when nobody is listening. Every dashboard I'd have thought to build was green.
+
+The only reason I caught it: the weekly scoreboard tracked repeat-mistake suppression, and that number simply wasn't moving. It took a five-PR chain to close, ending with an end-to-end verification on a live PR — an actual review where an actual rule demonstrably changed the actual output.
+
+> **A feedback loop you haven't verified end-to-end is decoration.**
+
+Writes are easy to observe and satisfying to celebrate. Reads are where loops die, silently. If you can't point at a specific run where a rule changed the behaviour, you don't have a learning loop — you have a database with good intentions.
+
+There's a symmetry I've come to appreciate. The standard I spent a year enforcing on the reviewer's comments — prove it, quote it, name the failing case, don't guess — is exactly the standard I failed to hold my own system to. I asserted the loop worked because I'd written the code for it.
+
+---
+
+## 3. An adversarial gate that may only downgrade
+
+Between merge and post sits a **verify gate**. Every merged finding gets re-checked by a verifier against the actual file contents at HEAD — plus the grepped definitions of the symbols it references — and has to survive an explicit attempt to refute it.
+
+The mechanism is straightforward. The **rollout** is the part I'd actually argue about, because a gate is exactly the kind of component that can hurt you while its dashboard looks great:
+
+- **Shadow mode first.** The verifier ran fully and logged its verdicts, but posting used the unmodified findings. Measurement at zero risk.
+- **Then confirm mode.** Confirmed findings post with the verifier's confidence; refuted ones post as *visible advisories with the refutation attached*. Nothing is dropped, so there's no chance it's silently hiding a real bug while I evaluate it.
+- **Only then enforce** — and even there, a refuted MAJOR-or-above security, tenancy, auth or money finding is demoted to an advisory rather than dropped.
+- **Fail-open at every layer**, deliberately: a gate outage can never lose a review.
+
+> **Build gates that can only ever downgrade confidence, never delete evidence.**
+
+I'd rather a human dismiss a hedged warning than never see a real one. A gate that deletes findings is a gate whose false-positive rate you can never measure — because the evidence of its mistakes is exactly what it threw away.
+
+---
+
+## 4. The day PRS reviewed its own guardrail
+
+The newest piece is small and makes a perfect case study.
+
+I wanted a guarantee that an assistant working on a PR can't end its turn while review comments sit unanswered or CI is red. So: a **Stop hook** that refuses to let the turn end.
+
+One constraint shaped everything. A Stop hook can only make the agent *continue* — it cannot sleep or poll. So it blocks **only on actionable work** (an open thread, a red check), which the agent can actually reduce, so the loop provably converges. It never blocks on a merely-*pending* re-review, which would spin forever. And it's opt-in via a sentinel file, so it never traps unrelated sessions.
+
+Since its whole purpose is to *be* a guarantee, one property dominates: **an unverifiable state must never let it quietly disarm.**
+
+Which is exactly what I got wrong. I shipped it as four PRs — one per repo — and PRS reviewed them:
+
+<PrsConvergence />
+
+Rounds 1 through 3 are the same bug wearing different costumes. Pick a fault and watch both versions:
+
+<PrsFailClosed />
+
+The round-2 catch is still the best thing any reviewer has ever told me. `block()` — the primitive whose only job is to stop the turn — called `jq`. So the branch handling *"`jq` is missing, therefore block"* produced no output and allowed the stop. **The safety net had a hole shaped exactly like the thing it was catching.**
+
+```bash
+# block() must work even when the tool it needs is the thing that's missing
+block() {
+  if command -v jq >/dev/null 2>&1 && jq -cn --arg r "$1" '{decision:"block",reason:$r}'; then
+    exit 0
+  fi
+  printf 'PR watch (block): %s\n' "$1" >&2
+  exit 2            # exit-2 also blocks — no jq required
+}
+```
+
+Round 4 surprised me most, because it wasn't finding a bug in my original code — it was finding one in my *fix*. I'd made "CI returned no rows" keep the hook armed, which reads as the safe choice. But a repo with no checks configured would then never disarm, and the loop could never terminate. I'd traded a fail-open bug for an infinite loop, and PRS caught the trade.
+
+**17 → 17 → 15 → 5 → 0. Fifty-four findings, every one addressed**, each fix landing with a test until the suite reached seventeen mocked cases.
+
+And exactly one finding I *didn't* fix: an ambiguous `git` state with no reliable shell-level distinction between "not a repository" and "corrupted metadata." Reasoned-**accepted** as a known limitation, in writing, on the thread.
+
+That last call matters as much as the fixes. A reviewer — human or machine — that can't tell "must fix" from "acceptable known limitation" isn't thorough. It's stuck, and it will hold your release hostage to a case that cannot happen.
+
+---
+
+## Where it stands
+
+PRS now runs on every PR across four repos in four languages, from one shared Action: roughly ten stateless focused passes behind a rules-of-evidence contract, two independent context layers, an orchestrator deciding what runs, per-review cost telemetry, a learning loop that is now verifiably a loop, and an adversarial gate that can only ever downgrade.
+
+Go back to the two problems in [Part 1](/blog/prs-01-three-passes-and-an-audit) — too noisy, and too quiet — and every chapter since is one of them answered by **structure rather than cleverness**. Forbid unverifiable claims. Move the house rules next to the code. Give it a map of the repository. Route spend without lowering the bar. Learn from every reaction. Prove each guarantee in code.
+
+None of it needed a smarter model.
+
+What it needed was treating *"does the team trust the next comment?"* as the only metric that matters, and building backward from there. That's a slower discipline than upgrading a model, and it's the only one that compounds.
+
+*Series complete. Start at [Part 1 →](/blog/prs-01-three-passes-and-an-audit)*

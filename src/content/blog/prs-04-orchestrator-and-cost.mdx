@@ -1,0 +1,102 @@
+---
+title: "We Put a Cheap Model in Charge of the Expensive Ones"
+excerpt: "Part 4 of 5 — Ten passes and two context layers on every push costs real money, and a reviewer that costs too much gets throttled into uselessness. Here's the orchestrator that decides what runs, the four levers around it, and the invariant none of them are allowed to break."
+date: "2026-07-28"
+readTime: "10 min read"
+tags: ["ai", "llms", "cost-optimization", "code-review", "prs-series"]
+published: true
+---
+
+*Part 4 of 5 — How I built PRS at Powerplay. [Part 3](/blog/prs-03-tree-sitter-cross-file) gave the reviewer a map of the whole repository. Everything up to here made it better. All of it made it more expensive.*
+
+By this point a single review meant roughly ten parameter passes, a whole-repo symbol map, and a per-PR definition resolver — running on every push, across four repos.
+
+That creates a failure mode that has nothing to do with code quality: **a reviewer that costs too much gets throttled.** Someone limits it to once per PR, or to certain branches, or turns it off for the team that ships most. And a reviewer that isn't running isn't a reviewer.
+
+So cost work here wasn't about saving money. It was about keeping the thing switched on.
+
+---
+
+## Measure before optimising
+
+I refused to guess, and I also deliberately **skipped a paid synthetic bake-off** — spending real money to prove savings on fake traffic tells you nothing, because your PRs have a shape and that shape is the entire variable.
+
+I read the number off live pull requests instead:
+
+> **~$2.55 per full review**, before any routing.
+
+Then I made the measurement permanent, which mattered more than the number itself. PRS posts a **per-pass cost ledger on every single review**, so a regression is visible immediately rather than at the end of a billing month.
+
+Here's a real one — click any row for why that pass sits on the tier it does:
+
+<PrsCostLedger />
+
+You cannot route spend you can't see. The telemetry came first; every lever below was chosen by reading that table.
+
+---
+
+## The orchestrator
+
+The biggest lever isn't which model runs a pass. It's **whether that pass runs at all.**
+
+Running every pass on every diff is wasteful — a data-layer specialist reviewing a CSS change produces confident opinions about nothing, and you pay full price for them. But running too few is dangerous in a way that doesn't show up until something reaches production.
+
+So a cheap **triage** model reads the diff first and proposes which passes to run and at what depth. Then deterministic code decides whether it's allowed to.
+
+Pick what landed in the PR:
+
+<PrsOrchestrator />
+
+The **auth** and **triage errored** scenarios are the two that define the design.
+
+In the auth case, triage sees a small, unremarkable diff and proposes a cheap review. It's not wrong about the size — it's wrong about the *stakes*, which a diff's shape doesn't tell you. Code overrules it: anything touching auth, money, DB queries or migrations gets security, data and deep, regardless of what the model thought. Backend repos always get the full set. Quick Scan always runs, on everything.
+
+In the error case, the orchestrator being unavailable falls back to the **full** review, not the cheap one. This is a deliberate asymmetry: an unavailable opinion must never be read as "nothing to worry about here." That's the same fail-closed instinct that shows up again, painfully, in [Part 5](/blog/prs-05-pushing-accuracy-further).
+
+The pattern generalises, and I've reused it three times since:
+
+> **Let a cheap model propose. Let deterministic code constrain.**
+
+The model's judgment is an *input* to the decision, never the decision. Triage can make a review cheaper. It can never make a money-path review shallower.
+
+---
+
+## Four more levers, and why they multiply
+
+**1 · Model tiering.** Quick Scan, the specialists, and *all* incremental-push passes run on a frontier model roughly **54% cheaper per token**. The strongest model is reserved for Deep Review and first-activation depth, where extra reasoning genuinely changes which findings come out. It's an Action input, so tuning cost is config, not a code change.
+
+**2 · Prompt-prefix cache.** The provider discounts the longest *unchanged prefix* of a request by about 90%, so the prompt is ordered most-stable → least-stable under a per-pass cache key.
+
+This one is worth playing with, because the failure mode is invisible until you look at a bill. Try moving the diff up:
+
+<PrsPromptOrder />
+
+**3 · Chunk sizing.** I raised the diff chunk size to 250KB. Fewer calls on large PRs — and because the stable prefix makes chunks 2..n roughly **3× cheaper** than chunk 1, halving the chunk count saves more than the bigger chunks cost.
+
+**4 · Budget guards.** A per-PR cap on the expensive full-review path, while incremental push reviews stay unlimited and cheap. Rapid-push storms dedup via `git patch-id`, so force-pushing the same tree doesn't re-bill a full review.
+
+They stack multiplicatively rather than additively, which is the whole point. A typical re-review is a *cheaper model* running *fewer passes* over a *mostly-cached prompt* in *fewer chunks*. Each lever is unremarkable alone; together they're the difference between "runs on every push" and "runs when someone remembers."
+
+---
+
+## The invariant
+
+Cutting cost usually means cutting quality. It doesn't here, and the reason is one rule I held everything to:
+
+> **The savings come from *where* compute is spent — never from *how much thinking* is allowed.**
+
+Forced high reasoning effort, the verify gate, the rules-of-evidence contract, the code-enforced severity floors — all of it applies to every pass, on every tier, in every scenario above. Not one lever lowers the bar a finding has to clear. They only change which specialists show up and how much of their prompt was already paid for.
+
+That distinction is what let me be aggressive about cost without ever having the conversation where someone asks whether the reviewer got dumber, and I don't have a confident answer.
+
+---
+
+## What it bought
+
+The point of all of this was never the bill. It was permission to run the expensive version everywhere, all the time, instead of rationing it to the PRs someone judged important — which is exactly the judgment call an automated reviewer exists to remove.
+
+PRS is now honest, well-fed, and affordable enough to leave on.
+
+What it isn't, yet, is finished. Accuracy isn't a milestone you ship; it's a thing that decays unless something keeps pushing on it — and that turned out to need a feedback loop, an adversarial gate, and a genuinely humbling week where the bot took apart the guardrail I'd built to keep it honest.
+
+*Next: [Still getting more accurate →](/blog/prs-05-pushing-accuracy-further)*

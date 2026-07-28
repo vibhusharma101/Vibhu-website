@@ -57,6 +57,109 @@ const BTN_GHOST: React.CSSProperties = {
 };
 
 /* ─────────────────────────────────────────────────────────
+   0. PrsV1Pipeline — the original three-pass reviewer, and
+      the ceiling each pass ran into.
+───────────────────────────────────────────────────────── */
+
+interface V1Pass {
+  name: string;
+  job: string;
+  sees: string;
+  ceiling: string;
+}
+
+const V1_PASSES: V1Pass[] = [
+  {
+    name: 'Quick Scan',
+    job: 'A fast, broad sweep for obvious problems.',
+    sees: 'The diff. Roughly three lines of context around each changed line.',
+    ceiling: 'Broad and shallow by construction. It catches what is visible on the changed line itself — and almost nothing that depends on knowing what the surrounding code actually is.',
+  },
+  {
+    name: 'Deep Review',
+    job: 'A slower, more careful read: security, correctness, performance, tests, style.',
+    sees: 'The same diff. Nothing more.',
+    ceiling: 'Five concerns in one prompt means it drifts — starts on security, wanders into naming. And with no schema, no enum members and no base class in front of it, its most valuable observations were guesses it stated as facts.',
+  },
+  {
+    name: 'Cross-File',
+    job: 'How the changed files connect to each other.',
+    sees: 'Only the files inside this diff.',
+    ceiling: 'The name promises a repo-wide view; the input is just the changed files. It cannot tell you who *else* in the codebase calls the function you changed, because that caller was never in the prompt.',
+  },
+];
+
+export function PrsV1Pipeline() {
+  const [sel, setSel] = useState(0);
+  const p = V1_PASSES[sel];
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>v1 — three passes, in sequence</span>
+        <span style={{ ...TITLE, color: 'var(--color-amber-dim)' }}>click a pass</span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', padding: 'clamp(16px,4vw,24px) clamp(13px,4vw,20px)', gap: 4, flexWrap: 'wrap' }}>
+        {V1_PASSES.map((pass, i) => (
+          <Fragment key={pass.name}>
+            <button
+              onClick={() => setSel(i)}
+              style={{
+                flex: '1 1 90px',
+                padding: '13px 8px',
+                background: sel === i ? 'var(--color-amber)' : 'transparent',
+                color: sel === i ? '#000' : 'var(--color-amber-dim)',
+                border: `1px solid ${sel === i ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                fontWeight: sel === i ? 700 : 400,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {pass.name}
+            </button>
+            {i < V1_PASSES.length - 1 && (
+              <span style={{ color: 'var(--color-amber-deep)', fontSize: 13, flexShrink: 0 }}>→</span>
+            )}
+          </Fragment>
+        ))}
+      </div>
+
+      <div style={{ padding: '0 clamp(13px,4vw,20px) clamp(16px,4vw,22px)' }}>
+        <div style={{ fontSize: 12.5, color: 'var(--color-amber-text)', lineHeight: 1.7, marginBottom: 14 }}>
+          {p.job}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px,1fr))', gap: 12 }}>
+          <div style={{ border: '1px solid var(--color-amber-deep)', padding: '11px 13px' }}>
+            <div style={{ ...TITLE, color: '#4ec9b0', marginBottom: 7 }}>What it could see</div>
+            <div style={{ fontSize: 11.5, color: 'var(--color-amber-dim)', lineHeight: 1.65 }}>{p.sees}</div>
+          </div>
+          <div style={{ border: '1px solid var(--color-magenta)', background: 'var(--color-magenta-soft)', padding: '11px 13px' }}>
+            <div style={{ ...TITLE, color: 'var(--color-magenta)', marginBottom: 7 }}>Where it hit a ceiling</div>
+            <div style={{ fontSize: 11.5, color: 'var(--color-amber-dim)', lineHeight: 1.65 }}>{p.ceiling}</div>
+          </div>
+        </div>
+
+        <div style={{
+          marginTop: 15,
+          paddingTop: 13,
+          borderTop: '1px solid var(--color-amber-deep)',
+          fontSize: 11.5,
+          color: 'var(--color-amber-dim)',
+          lineHeight: 1.7,
+        }}>
+          All three passes read the same narrow window. Stacking more prompts on the same input
+          gets you more <em>opinions</em> — not more <em>information</em>.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
    1. PrsAuditScoreboard — score the reviewer yourself.
 
    Five comments in the shape of the four failure modes the
@@ -199,6 +302,24 @@ export function PrsAuditScoreboard() {
             </div>
             <div style={{ fontSize: 12, color: 'var(--color-amber-dim)' }}>
               Which sounds decent, and isn&apos;t — a reviewer is judged on its worst comment, not its average.
+            </div>
+
+            <div style={{
+              marginTop: 22,
+              paddingTop: 18,
+              borderTop: '1px solid var(--color-amber-deep)',
+              textAlign: 'left',
+            }}>
+              <div style={{ ...TITLE, color: 'var(--color-magenta)', marginBottom: 8 }}>
+                And the half this number cannot see
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.7 }}>
+                A precision audit only grades the comments the reviewer <em>did</em> write. It is
+                structurally blind to the ones it should have written and didn&apos;t — the real bug
+                three files away that nobody was ever told about. On a typical PR the bot left a
+                handful of comments where a careful human would have left more, and no amount of
+                re-scoring the existing ones would have surfaced that.
+              </div>
             </div>
           </div>
         </div>
@@ -490,6 +611,170 @@ export function PrsRubberStamp() {
             A real log line from v1. Press send and watch a pull request get approved.
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   2b. PrsRepoManifest — one engine, four codebases, four
+       sets of house rules. The repo owns its own config.
+───────────────────────────────────────────────────────── */
+
+interface RepoPass {
+  slug: string;
+  floor: string;
+  minConf: number;
+}
+
+interface RepoConfig {
+  key: string;
+  label: string;
+  lang: string;
+  color: string;
+  passes: RepoPass[];
+  rules: string[];
+}
+
+const REPOS: RepoConfig[] = [
+  {
+    key: 'backend', label: 'Backend', lang: 'Node.js', color: '#4ec9b0',
+    passes: [
+      { slug: 'security_tenancy', floor: 'MINOR', minConf: 0.3 },
+      { slug: 'data_layer', floor: 'MINOR', minConf: 0.3 },
+      { slug: 'performance_async', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'testing_hygiene', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.4 },
+    ],
+    rules: [
+      'Handlers must return through the shared response wrapper — never the bare object.',
+      'Write paths run inside the transaction discipline the repo defines; a bare write is the bug, not the wrapper.',
+      'Request scoping is derived, never taken from client input. Code that re-derives it is correct by design.',
+    ],
+  },
+  {
+    key: 'web', label: 'Web', lang: 'React / TypeScript', color: '#569cd6',
+    passes: [
+      { slug: 'security_tenancy', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'performance_async', floor: 'MINOR', minConf: 0.3 },
+      { slug: 'testing_hygiene', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.3 },
+    ],
+    rules: [
+      'Shared component primitives are mandated over hand-rolled equivalents.',
+      'Data fetching goes through the established client layer, not ad-hoc calls in components.',
+    ],
+  },
+  {
+    key: 'android', label: 'Android', lang: 'Kotlin', color: '#dcdcaa',
+    passes: [
+      { slug: 'architecture_layering', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'performance_async', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'testing_hygiene', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.3 },
+    ],
+    rules: [
+      'MVVM / Clean layering is mandated — a ViewModel reaching past its layer is the finding, not the abstraction.',
+      'Dependency injection follows the repo idiom; manual construction in a screen is the exception worth flagging.',
+    ],
+  },
+  {
+    key: 'ios', label: 'iOS', lang: 'Swift', color: '#ce9178',
+    passes: [
+      { slug: 'architecture_layering', floor: 'MAJOR', minConf: 0.5 },
+      { slug: 'performance_async', floor: 'MINOR', minConf: 0.4 },
+      { slug: 'conventions_arch', floor: 'MINOR', minConf: 0.3 },
+    ],
+    rules: [
+      'Model decoding goes through the declared coding keys; a hand-written parser is worth a comment.',
+      'Concurrency follows the repo\'s structured pattern rather than ad-hoc dispatch.',
+    ],
+  },
+];
+
+export function PrsRepoManifest() {
+  const [sel, setSel] = useState('backend');
+  const repo = REPOS.find(r => r.key === sel)!;
+
+  return (
+    <div style={BOX}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-amber-deep)', flexWrap: 'wrap' }}>
+        {REPOS.map(r => {
+          const active = sel === r.key;
+          return (
+            <button
+              key={r.key}
+              onClick={() => setSel(r.key)}
+              style={{
+                flex: '1 1 80px',
+                padding: '10px 8px',
+                background: active ? 'var(--color-bg)' : 'var(--color-bg2)',
+                border: 'none',
+                borderBottom: active ? `2px solid ${r.color}` : '2px solid transparent',
+                color: active ? r.color : 'var(--color-amber-dim)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10.5,
+                letterSpacing: '0.07em',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: '10px clamp(13px,4vw,20px)', borderBottom: '1px solid var(--color-amber-deep)', fontSize: 10.5, color: 'var(--color-amber-dim)' }}>
+        <span style={{ color: repo.color }}>{repo.lang}</span>
+        {' · '}the shared Action is stack-agnostic; this manifest lives in the repo
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(255px,1fr))' }}>
+        <div style={{ padding: 'clamp(13px,4vw,18px)', borderRight: '1px solid var(--color-amber-deep)' }}>
+          <div style={{ ...TITLE, marginBottom: 11 }}>Passes this repo runs</div>
+          {repo.passes.map(p => (
+            <div key={p.slug} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 0',
+              borderBottom: '1px solid rgba(58,37,8,0.45)',
+              fontSize: 11,
+            }}>
+              <span style={{ color: 'var(--color-amber-text)', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{p.slug}</span>
+              <span style={{ color: 'var(--color-amber-dim)', fontSize: 9.5, flexShrink: 0 }}>≥{p.floor}</span>
+              <span style={{ color: 'var(--color-magenta)', fontSize: 9.5, flexShrink: 0 }}>conf {p.minConf}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 10, color: 'var(--color-amber-dim)', marginTop: 10, lineHeight: 1.6, fontStyle: 'italic' }}>
+            Both thresholds are enforced in code after the model answers — findings below either are
+            dropped before the merge step sees them.
+          </div>
+        </div>
+
+        <div style={{ padding: 'clamp(13px,4vw,18px)', background: 'var(--color-bg2)' }}>
+          <div style={{ ...TITLE, marginBottom: 11 }}>House rules — mandated, never a bug</div>
+          {repo.rules.map(r => (
+            <div key={r} style={{ display: 'flex', gap: 9, marginBottom: 11, fontSize: 11.5, lineHeight: 1.65 }}>
+              <span style={{ color: repo.color, flexShrink: 0 }}>§</span>
+              <span style={{ color: 'var(--color-amber-dim)' }}>{r}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,15px) clamp(13px,4vw,20px)',
+        fontSize: 11.5,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.7,
+      }}>
+        Same engine, four different definitions of “correct”. A pattern that is a finding in one repo is
+        <strong style={{ color: 'var(--color-amber)' }}> mandated</strong> in another — which is why the rules
+        cannot live in the reviewer. They have to live next to the code they describe.
       </div>
     </div>
   );
@@ -1201,6 +1486,170 @@ export function PrsSymbolMap() {
 }
 
 /* ─────────────────────────────────────────────────────────
+   6b. PrsOrchestrator — a cheap model proposes, deterministic
+       code constrains. Triage can make a review cheaper; it
+       can never make a money-path review shallower.
+───────────────────────────────────────────────────────── */
+
+const ALL_PASSES = [
+  'quick_scan', 'security_tenancy', 'data_layer', 'performance_async',
+  'testing_hygiene', 'conventions_arch', 'deep_review', 'cross_file',
+];
+
+interface Scenario {
+  key: string;
+  label: string;
+  proposed: string[];
+  /** passes code force-adds regardless of what triage said */
+  forced: string[];
+  rule: string | null;
+  note: string;
+}
+
+const SCENARIOS: Scenario[] = [
+  {
+    key: 'docs', label: 'README / docs only',
+    proposed: ['quick_scan', 'conventions_arch'],
+    forced: [],
+    rule: null,
+    note: 'Nothing here can break auth, corrupt data or leak money. Triage skips the passes that would only generate noise, and code has no reason to object.',
+  },
+  {
+    key: 'css', label: 'CSS tweak',
+    proposed: ['quick_scan', 'conventions_arch', 'performance_async'],
+    forced: [],
+    rule: null,
+    note: 'A data-layer pass on a stylesheet produces confident opinions about nothing. Skipped.',
+  },
+  {
+    key: 'auth', label: 'Auth middleware change',
+    proposed: ['quick_scan', 'conventions_arch'],
+    forced: ['security_tenancy', 'data_layer', 'deep_review'],
+    rule: 'Auth path → security + data + deep, always.',
+    note: 'Triage looked at a small diff and proposed a cheap review. Code overruled it. This is the case the whole design exists for — the model\'s judgment is an input to the decision, never the decision.',
+  },
+  {
+    key: 'migration', label: 'DB migration',
+    proposed: ['quick_scan', 'data_layer'],
+    forced: ['security_tenancy', 'deep_review', 'cross_file'],
+    rule: 'Migration path → security + data + deep, always.',
+    note: 'Migrations are irreversible in a way most code is not. The floor here is not negotiable by a cheap model reading a diff.',
+  },
+  {
+    key: 'large', label: 'Large diff',
+    proposed: ['quick_scan', 'conventions_arch'],
+    forced: ALL_PASSES,
+    rule: 'Diff over the size threshold → full review.',
+    note: 'Above a certain size, triage is guessing about too much surface area. The fallback is everything.',
+  },
+  {
+    key: 'error', label: 'Triage itself errored',
+    proposed: [],
+    forced: ALL_PASSES,
+    rule: 'Any triage error → full review.',
+    note: 'The orchestrator failing is never allowed to mean "nothing to review here". An unavailable opinion falls back to the expensive, safe answer — not the cheap one.',
+  },
+];
+
+export function PrsOrchestrator() {
+  const [sel, setSel] = useState('docs');
+  const s = SCENARIOS.find(x => x.key === sel)!;
+
+  const final = ALL_PASSES.filter(
+    p => p === 'quick_scan' || s.proposed.includes(p) || s.forced.includes(p)
+  );
+
+  return (
+    <div style={BOX}>
+      <div style={BAR}>
+        <span style={TITLE}>Orchestrator — pick what landed in the PR</span>
+        <span style={{ ...TITLE, color: 'var(--color-amber)' }}>{final.length} / {ALL_PASSES.length} passes</span>
+      </div>
+
+      <div style={{ padding: 'clamp(12px,3vw,16px) clamp(13px,4vw,18px)', borderBottom: '1px solid var(--color-amber-deep)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {SCENARIOS.map(x => {
+          const active = sel === x.key;
+          return (
+            <button
+              key={x.key}
+              onClick={() => setSel(x.key)}
+              style={{
+                padding: '5px 11px',
+                background: active ? 'var(--color-amber)' : 'transparent',
+                color: active ? '#000' : 'var(--color-amber-dim)',
+                border: `1px solid ${active ? 'var(--color-amber)' : 'var(--color-amber-deep)'}`,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10.5,
+                cursor: 'pointer',
+                fontWeight: active ? 700 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {x.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: 'clamp(14px,4vw,20px)' }}>
+        {/* pass grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))', gap: 6, marginBottom: 16 }}>
+          {ALL_PASSES.map(p => {
+            const isForced = s.forced.includes(p);
+            const isProposed = s.proposed.includes(p);
+            const isAlways = p === 'quick_scan';
+            const on = isForced || isProposed || isAlways;
+
+            const color = isForced ? 'var(--color-magenta)' : on ? '#4ec9b0' : 'var(--color-amber-deep)';
+            return (
+              <div key={p} style={{
+                border: `1px solid ${on ? color : 'var(--color-amber-deep)'}`,
+                background: isForced ? 'var(--color-magenta-soft)' : on ? 'rgba(78,201,176,0.07)' : 'transparent',
+                padding: '7px 9px',
+                opacity: on ? 1 : 0.4,
+                transition: 'all 0.18s',
+              }}>
+                <div style={{ fontSize: 10.5, color: on ? color : 'var(--color-amber-dim)', wordBreak: 'break-word' }}>
+                  {p}
+                </div>
+                <div style={{ fontSize: 8.5, color: 'var(--color-amber-dim)', marginTop: 3, letterSpacing: '0.05em' }}>
+                  {isForced ? 'FORCED BY CODE' : isAlways ? 'ALWAYS RUNS' : isProposed ? 'triage chose' : 'skipped'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {s.rule && (
+          <div style={{
+            border: '1px solid var(--color-magenta)',
+            background: 'var(--color-magenta-soft)',
+            padding: '10px 13px',
+            marginBottom: 14,
+          }}>
+            <div style={{ ...TITLE, color: 'var(--color-magenta)', marginBottom: 5 }}>Code-enforced floor</div>
+            <div style={{ fontSize: 12, color: 'var(--color-amber-text)' }}>{s.rule}</div>
+          </div>
+        )}
+
+        <div style={{ fontSize: 12, color: 'var(--color-amber-dim)', lineHeight: 1.75 }}>{s.note}</div>
+      </div>
+
+      <div style={{
+        borderTop: '1px solid var(--color-amber-deep)',
+        padding: 'clamp(12px,3vw,15px) clamp(13px,4vw,20px)',
+        fontSize: 11.5,
+        color: 'var(--color-amber-dim)',
+        lineHeight: 1.7,
+      }}>
+        <strong style={{ color: 'var(--color-amber)' }}>Let a cheap model propose. Let deterministic code
+        constrain.</strong> Triage can make a review cheaper. It can never make a money-path review shallower.
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
    7. PrsCostLedger — the real per-pass ledger PRS posts on
       every review. Figures are from an actual PR.
 ───────────────────────────────────────────────────────── */
@@ -1479,6 +1928,139 @@ export function PrsPromptOrder() {
               <strong style={{ color: 'var(--color-amber)' }}>Partially busted.</strong> Putting a volatile
               block before a stable one throws away the discount for <em>everything after it</em> — not just
               for that block. That ordering comment is now the most load-bearing comment in the codebase.
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   8b. PrsLearningLoop — feedback becomes a rule, and the
+       silent bug that made all of it decoration for weeks.
+───────────────────────────────────────────────────────── */
+
+interface LoopStage {
+  label: string;
+  detail: string;
+  /** is this stage on the write side (survives the bug) or the read side (didn't happen)? */
+  side: 'write' | 'read';
+}
+
+const LOOP_STAGES: LoopStage[] = [
+  { side: 'write', label: 'Developer pushes back', detail: 'A 👎, or a reply: “we do it this way on purpose.”' },
+  { side: 'write', label: 'Exchange is verified', detail: 'Confirm the pushback is legitimate before it becomes doctrine.' },
+  { side: 'write', label: 'Mined into a rule — with the why', detail: 'Not “don’t flag X”, but the reason. The reason is what lets it generalise past the literal X.' },
+  { side: 'write', label: 'Embedded and stored', detail: 'Written to the vector store, tagged with the parameter it belongs to.' },
+  { side: 'read', label: 'Re-ranked against the next diff', detail: 'Each pass pulls the rules relevant to the change in front of it, by embedding similarity.' },
+  { side: 'read', label: 'Injected as binding', detail: 'The prompt treats them as law: do NOT flag what these tell you not to flag.' },
+  { side: 'read', label: 'Repeat mistake suppressed', detail: 'The comment that got corrected once does not come back.' },
+];
+
+export function PrsLearningLoop() {
+  const [broken, setBroken] = useState(false);
+  const [lit, setLit] = useState(0);
+
+  useEffect(() => {
+    setLit(0);
+    const limit = broken ? 4 : LOOP_STAGES.length;
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setLit(i);
+      if (i >= limit) clearInterval(id);
+    }, 260);
+    return () => clearInterval(id);
+  }, [broken]);
+
+  return (
+    <div style={BOX}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-amber-deep)' }}>
+        {[false, true].map(b => {
+          const active = broken === b;
+          const color = b ? 'var(--color-magenta)' : '#4ec9b0';
+          return (
+            <button
+              key={String(b)}
+              onClick={() => setBroken(b)}
+              style={{
+                flex: 1,
+                padding: '10px 8px',
+                background: active ? 'var(--color-bg)' : 'var(--color-bg2)',
+                border: 'none',
+                borderBottom: active ? `2px solid ${color}` : '2px solid transparent',
+                color: active ? color : 'var(--color-amber-dim)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                letterSpacing: '0.07em',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {b ? 'As it actually ran for weeks' : 'The loop as designed'}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: 'clamp(14px,4vw,20px)' }}>
+        {LOOP_STAGES.map((st, i) => {
+          const dead = broken && st.side === 'read';
+          const on = i < lit;
+          const color = dead ? 'var(--color-amber-deep)' : st.side === 'write' ? '#4ec9b0' : 'var(--color-amber)';
+          return (
+            <div key={st.label} style={{
+              display: 'flex',
+              gap: 11,
+              marginBottom: 11,
+              opacity: dead ? 0.32 : on ? 1 : 0.15,
+              transition: 'opacity 0.3s',
+            }}>
+              <span style={{
+                width: 9, height: 9, flexShrink: 0, marginTop: 4,
+                background: on && !dead ? color : 'transparent',
+                border: `1px solid ${color}`,
+                display: 'inline-block',
+              }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: dead ? 'var(--color-amber-dim)' : color }}>
+                  {st.label}
+                  {dead && (
+                    <span style={{ color: 'var(--color-magenta)', fontSize: 9.5, marginLeft: 9, letterSpacing: '0.06em' }}>
+                      NEVER HAPPENED
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-amber-dim)', marginTop: 3, lineHeight: 1.6 }}>
+                  {st.detail}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <div style={{
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: '1px solid var(--color-amber-deep)',
+          fontSize: 12,
+          color: 'var(--color-amber-dim)',
+          lineHeight: 1.75,
+        }}>
+          {broken ? (
+            <>
+              <strong style={{ color: 'var(--color-magenta)' }}>Every write succeeded. Nothing read.</strong> Rules
+              were mined, verified, embedded and stored — dutifully, week after week — into a store nothing
+              queried at review time. There were no errors, because nothing errors when nobody is listening.
+              The rule count went up. It looked healthy from every angle except the only one that mattered.
+            </>
+          ) : (
+            <>
+              The field that makes this work is <strong style={{ color: '#4ec9b0' }}>why</strong>. A rule that
+              records only “don’t flag X” dies the moment the next diff isn’t literally X; a rule that records
+              the reason generalises. And the re-rank is what keeps a database-transaction rule off a CSS diff.
             </>
           )}
         </div>

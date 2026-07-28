@@ -27,14 +27,18 @@ import {
 } from './BlogMdxComponents';
 
 import {
+  PrsV1Pipeline,
   PrsAuditScoreboard,
   PrsRubberStamp,
+  PrsRepoManifest,
   PrsFanOut,
   PrsEvidenceGate,
   PrsContextLens,
   PrsSymbolMap,
+  PrsOrchestrator,
   PrsCostLedger,
   PrsPromptOrder,
+  PrsLearningLoop,
   PrsConvergence,
   PrsFailClosed,
 } from './PrsMdxComponents';
@@ -55,14 +59,18 @@ export const mdxComponents = {
   KodemuxRouterDemo,
   KodemuxGuardTrace,
   // ── How I built PRS (5-part series) ──
+  PrsV1Pipeline,
   PrsAuditScoreboard,
   PrsRubberStamp,
+  PrsRepoManifest,
   PrsFanOut,
   PrsEvidenceGate,
   PrsContextLens,
   PrsSymbolMap,
+  PrsOrchestrator,
   PrsCostLedger,
   PrsPromptOrder,
+  PrsLearningLoop,
   PrsConvergence,
   PrsFailClosed,
 };
