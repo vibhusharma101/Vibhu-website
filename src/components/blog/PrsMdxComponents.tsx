@@ -1937,6 +1937,139 @@ export function PrsPromptOrder() {
 }
 
 /* ─────────────────────────────────────────────────────────
+   8b. PrsLearningLoop — feedback becomes a rule, and the
+       silent bug that made all of it decoration for weeks.
+───────────────────────────────────────────────────────── */
+
+interface LoopStage {
+  label: string;
+  detail: string;
+  /** is this stage on the write side (survives the bug) or the read side (didn't happen)? */
+  side: 'write' | 'read';
+}
+
+const LOOP_STAGES: LoopStage[] = [
+  { side: 'write', label: 'Developer pushes back', detail: 'A 👎, or a reply: “we do it this way on purpose.”' },
+  { side: 'write', label: 'Exchange is verified', detail: 'Confirm the pushback is legitimate before it becomes doctrine.' },
+  { side: 'write', label: 'Mined into a rule — with the why', detail: 'Not “don’t flag X”, but the reason. The reason is what lets it generalise past the literal X.' },
+  { side: 'write', label: 'Embedded and stored', detail: 'Written to the vector store, tagged with the parameter it belongs to.' },
+  { side: 'read', label: 'Re-ranked against the next diff', detail: 'Each pass pulls the rules relevant to the change in front of it, by embedding similarity.' },
+  { side: 'read', label: 'Injected as binding', detail: 'The prompt treats them as law: do NOT flag what these tell you not to flag.' },
+  { side: 'read', label: 'Repeat mistake suppressed', detail: 'The comment that got corrected once does not come back.' },
+];
+
+export function PrsLearningLoop() {
+  const [broken, setBroken] = useState(false);
+  const [lit, setLit] = useState(0);
+
+  useEffect(() => {
+    setLit(0);
+    const limit = broken ? 4 : LOOP_STAGES.length;
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setLit(i);
+      if (i >= limit) clearInterval(id);
+    }, 260);
+    return () => clearInterval(id);
+  }, [broken]);
+
+  return (
+    <div style={BOX}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-amber-deep)' }}>
+        {[false, true].map(b => {
+          const active = broken === b;
+          const color = b ? 'var(--color-magenta)' : '#4ec9b0';
+          return (
+            <button
+              key={String(b)}
+              onClick={() => setBroken(b)}
+              style={{
+                flex: 1,
+                padding: '10px 8px',
+                background: active ? 'var(--color-bg)' : 'var(--color-bg2)',
+                border: 'none',
+                borderBottom: active ? `2px solid ${color}` : '2px solid transparent',
+                color: active ? color : 'var(--color-amber-dim)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                letterSpacing: '0.07em',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              {b ? 'As it actually ran for weeks' : 'The loop as designed'}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ padding: 'clamp(14px,4vw,20px)' }}>
+        {LOOP_STAGES.map((st, i) => {
+          const dead = broken && st.side === 'read';
+          const on = i < lit;
+          const color = dead ? 'var(--color-amber-deep)' : st.side === 'write' ? '#4ec9b0' : 'var(--color-amber)';
+          return (
+            <div key={st.label} style={{
+              display: 'flex',
+              gap: 11,
+              marginBottom: 11,
+              opacity: dead ? 0.32 : on ? 1 : 0.15,
+              transition: 'opacity 0.3s',
+            }}>
+              <span style={{
+                width: 9, height: 9, flexShrink: 0, marginTop: 4,
+                background: on && !dead ? color : 'transparent',
+                border: `1px solid ${color}`,
+                display: 'inline-block',
+              }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: dead ? 'var(--color-amber-dim)' : color }}>
+                  {st.label}
+                  {dead && (
+                    <span style={{ color: 'var(--color-magenta)', fontSize: 9.5, marginLeft: 9, letterSpacing: '0.06em' }}>
+                      NEVER HAPPENED
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-amber-dim)', marginTop: 3, lineHeight: 1.6 }}>
+                  {st.detail}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <div style={{
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: '1px solid var(--color-amber-deep)',
+          fontSize: 12,
+          color: 'var(--color-amber-dim)',
+          lineHeight: 1.75,
+        }}>
+          {broken ? (
+            <>
+              <strong style={{ color: 'var(--color-magenta)' }}>Every write succeeded. Nothing read.</strong> Rules
+              were mined, verified, embedded and stored — dutifully, week after week — into a store nothing
+              queried at review time. There were no errors, because nothing errors when nobody is listening.
+              The rule count went up. It looked healthy from every angle except the only one that mattered.
+            </>
+          ) : (
+            <>
+              The field that makes this work is <strong style={{ color: '#4ec9b0' }}>why</strong>. A rule that
+              records only “don’t flag X” dies the moment the next diff isn’t literally X; a rule that records
+              the reason generalises. And the re-rank is what keeps a database-transaction rule off a CSS diff.
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
    9. PrsConvergence — five rounds of PRS reviewing the hook
       built to enforce its own correctness. 17→17→15→5→0.
 ───────────────────────────────────────────────────────── */
