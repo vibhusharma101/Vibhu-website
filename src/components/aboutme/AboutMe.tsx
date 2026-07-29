@@ -17,8 +17,8 @@ export function AboutMe() {
             I led the Android app to 500,000+ users.
           </p>
           <p>
-            Currently back at Powerplay, leading AI engineering — building India&apos;s first AI
-            Workforce for Construction. I work across the full stack: backend, frontend, iOS,
+            Currently back at Powerplay, leading AI engineering — building software for the
+            construction industry. I work across the full stack: backend, frontend, iOS,
             Android, and AI agents.
           </p>
         </div>
