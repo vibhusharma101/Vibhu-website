@@ -18,7 +18,7 @@ export function HeroText() {
         <p className={classes.description}>
           IIT Roorkee Gold Medalist. Founding engineer at Powerplay (500k+ users).
           Solo founder of Vignam ($1M valuation). Currently leading AI engineering
-          at Powerplay — building India&apos;s first AI Workforce for Construction.
+          at Powerplay — building software for the construction industry.
         </p>
 
         <div className={classes.controls}>
