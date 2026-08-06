@@ -1,151 +1,95 @@
-/* ── Blog post — VS Code aesthetic ── */
-.shell {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  background: var(--color-bg);
-  color: var(--color-amber-text);
-  font-family: var(--font-mono);
-}
+/* ═══════════════════════════════════════════════════════════
+   Blog reading surface
 
-.header {
-  flex-shrink: 0;
-  background: rgba(3, 2, 1, 0.92);
-  border-bottom: 2px double var(--color-amber-deep);
-}
+   Shared by both render paths: the standalone /blog/[slug]
+   route and the in-shell BlogPostPane. Change it once, both
+   move together.
 
-.menubar {
-  display: flex;
-  align-items: center;
-  height: 42px;
-  padding: 0 20px;
-  gap: 12px;
-}
+   Reading rules this file enforces:
+     · measure capped at ~68–72 characters (was ~105 unbounded)
+     · body copy at 18px, not 16px — serif needs the size
+     · paragraph gap > line gap, so paragraphs actually separate
+     · headings bond downward to the text they introduce
+     · body copy in --read-fg, amber reserved for headings
+   ═══════════════════════════════════════════════════════════ */
 
-.brand {
-  font-family: var(--font-serif);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-amber);
-  letter-spacing: -0.01em;
-  flex-shrink: 0;
-  text-decoration: none;
-}
-
-.tabBar {
-  flex: 1;
-  display: flex;
-  align-items: stretch;
-  height: 42px;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 14px;
-  background: var(--color-bg);
-  border-left: 1px solid var(--color-amber-deep);
-  border-bottom: 2px solid var(--color-magenta);
-  color: var(--color-amber-text);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-}
-
-.tabDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.subbar {
-  border-top: 1px solid var(--color-amber-deep);
-  background: var(--color-bg2);
-  padding: 4px 20px;
-  font-size: 10.5px;
-  color: var(--color-amber-dim);
-  display: flex;
-  justify-content: space-between;
-}
-
-.breadcrumb {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-
-.breadcrumb a {
-  color: var(--color-amber-dim);
-  text-decoration: none;
-}
-
-.breadcrumb a:hover { color: var(--color-amber); }
-
-.breadcrumbCurrent { color: var(--color-amber-text); }
-
-/* ── Main area ── */
-.main {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-}
-
-.gutter {
-  width: 44px;
-  min-width: 44px;
-  background: var(--color-bg2);
-  border-right: 1px solid var(--color-amber-deep);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  padding: 40px 10px;
-  flex-shrink: 0;
-  overflow: hidden;
-  counter-reset: lnum;
-}
-
-.gutterLine {
-  counter-increment: lnum;
-  height: 22px;
-  min-height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 11.5px;
-  color: var(--color-amber-dim);
-  user-select: none;
-}
-
-.gutterLine::before { content: counter(lnum); }
-
-/* ── Article ── */
+/* ── Scroll container ── */
 .article {
   flex: 1;
   overflow-y: auto;
-  padding: 48px 60px 100px;
+  padding: 0 40px 120px;
   min-width: 0;
+}
+
+/* Smooth scrolling is opt-out: readers who ask for reduced motion get
+   an instant jump instead. The TOC does the same check in JS. */
+@media (prefers-reduced-motion: no-preference) {
+  .article { scroll-behavior: smooth; }
 }
 
 .article::-webkit-scrollbar { width: 4px; }
 .article::-webkit-scrollbar-thumb { background: var(--color-amber-deep); }
 
+/*
+ * The measure. Every direct child of the article is capped and
+ * centred, so prose, headings, and the meta block all share one
+ * left edge. 660px ≈ 68 characters at 18px IBM Plex Serif.
+ *
+ * Deliberately px, not rem or ch: the root font-size here is 13px
+ * (mono UI chrome), so rem would silently yield ~55ch and ch would
+ * resolve against the mono font rather than the serif body.
+ */
+.article > * {
+  width: 100%;
+  max-width: 660px;
+  margin-inline: auto;
+}
+
+/* ── Reading progress ── */
+.progressTrack {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  max-width: none !important;
+  height: 2px;
+  background: var(--color-amber-deep);
+  margin-inline: -40px !important;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--color-magenta);
+  transform-origin: left;
+  transform: scaleX(var(--read-progress, 0));
+}
+
+/* ── Masthead ── */
 .postMeta {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-amber-dim);
-  margin-bottom: 20px;
+  color: var(--read-muted);
+  margin-top: 64px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
+}
+
+.metaBack {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-magenta);
+  cursor: pointer;
 }
 
 .tags { display: flex; gap: 6px; margin-left: 4px; }
 
 .tag {
   font-size: 9.5px;
-  color: var(--color-amber-dim);
+  color: var(--read-muted);
   border: 1px solid var(--color-amber-deep);
   padding: 2px 7px;
   letter-spacing: 0.06em;
@@ -153,169 +97,298 @@
 
 .postTitle {
   font-family: var(--font-serif);
-  font-size: clamp(28px, 4vw, 48px);
+  font-size: clamp(30px, 3.6vw, 44px);
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: var(--color-amber-text);
-  margin-bottom: 16px;
-  text-shadow: 2px 2px 0 var(--color-amber-deep);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--color-amber);
+  margin-bottom: 20px;
+  text-wrap: balance;
 }
 
+/*
+ * The deck. Sits between title and body, so it reads as a
+ * bridge — larger than body, quieter in colour. Upright, not
+ * italic: long italic serif on a dark ground is hard work.
+ */
 .postExcerpt {
   font-family: var(--font-serif);
-  font-size: 17px;
-  line-height: 1.6;
-  color: var(--color-amber-dim);
-  margin-bottom: 28px;
-  font-style: italic;
+  font-size: 19px;
+  line-height: 1.62;
+  color: var(--read-muted);
+  margin-bottom: 32px;
+  text-wrap: pretty;
 }
 
 .divider {
   border: none;
-  border-top: 1px dashed var(--color-amber-deep);
-  margin-bottom: 36px;
+  border-top: 1px solid var(--color-amber-deep);
+  margin-bottom: 44px;
 }
 
-/* ── MDX prose ── */
+/* ═══════════════════════════════════════════
+   Prose
+   ═══════════════════════════════════════════ */
 .prose {
   font-family: var(--font-serif);
-  font-size: 16px;
-  line-height: 1.75;
-  color: var(--color-amber-text);
-}
-
-.prose h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-amber);
-  margin: 40px 0 16px;
-  letter-spacing: -0.02em;
-  font-family: var(--font-serif);
-}
-
-.prose h3 {
   font-size: 18px;
-  font-weight: 700;
-  color: var(--color-amber);
-  margin: 28px 0 12px;
-  font-family: var(--font-serif);
+  line-height: 1.72;
+  color: var(--read-fg);
+  text-wrap: pretty;
 }
 
 .prose p {
-  margin-bottom: 18px;
-  color: var(--color-amber-text);
+  margin-bottom: 1.5em; /* ≈27px — clears the 13px line gap */
+  color: var(--read-fg);
 }
+
+/*
+ * Headings carry more space above than below. That bonds each
+ * heading to the paragraph it introduces instead of letting it
+ * float equidistant between two blocks.
+ */
+.prose h2 {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-amber);
+  letter-spacing: -0.02em;
+  margin: 2.4em 0 0.6em;
+  scroll-margin-top: 24px;
+  text-wrap: balance;
+}
+
+.prose h3 {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-amber-text);
+  margin: 1.9em 0 0.5em;
+  scroll-margin-top: 24px;
+  text-wrap: balance;
+}
+
+.prose h2:first-child,
+.prose h3:first-child { margin-top: 0; }
 
 .prose strong { color: var(--color-amber); font-weight: 700; }
 
-.prose em { color: var(--color-amber-dim); }
+.prose em { color: var(--read-fg); font-style: italic; }
 
 .prose a {
-  color: var(--color-magenta);
+  color: var(--read-fg);
   text-decoration: underline;
+  text-decoration-color: var(--color-magenta);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+  transition: color var(--duration-fast);
 }
 
-.prose a:hover { color: var(--color-amber); }
+.prose a:hover { color: var(--color-magenta); }
 
 .prose ul, .prose ol {
-  margin: 0 0 18px 24px;
-  color: var(--color-amber-text);
+  margin: 0 0 1.5em 1.3em;
+  color: var(--read-fg);
 }
 
-.prose li { margin-bottom: 6px; line-height: 1.65; }
+.prose li {
+  margin-bottom: 0.5em;
+  line-height: 1.68;
+  padding-left: 0.2em;
+}
+
+.prose li::marker { color: var(--color-amber-dim); }
 
 .prose blockquote {
-  border-left: 3px solid var(--color-magenta);
-  padding-left: 18px;
-  margin: 24px 0;
-  color: var(--color-amber-dim);
+  border-left: 2px solid var(--color-magenta);
+  padding-left: 22px;
+  margin: 2em 0;
+  color: var(--read-muted);
   font-style: italic;
 }
 
+.prose blockquote p:last-child { margin-bottom: 0; }
+
 .prose hr {
   border: none;
-  border-top: 1px dashed var(--color-amber-deep);
-  margin: 32px 0;
+  border-top: 1px solid var(--color-amber-deep);
+  margin: 3em 0;
 }
 
-/* Code blocks — rehype-pretty-code */
+/* ── Code ── */
+/*
+ * Code breaks the measure slightly — monospace at 13.5px needs
+ * more room than serif at 18px to avoid wrapping mid-expression.
+ */
 .prose pre {
   background: var(--color-bg2) !important;
   border: 1px solid var(--color-amber-deep);
-  padding: 20px;
-  margin: 24px 0;
+  padding: 20px 22px;
+  margin: 2em -22px;
   overflow-x: auto;
   font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 13.5px;
+  line-height: 1.7;
 }
 
+.prose pre::-webkit-scrollbar { height: 4px; }
+.prose pre::-webkit-scrollbar-thumb { background: var(--color-amber-deep); }
+
 .prose code:not(pre code) {
-  background: var(--color-amber-deep);
+  background: rgba(245, 166, 35, 0.1);
   color: var(--color-amber-text);
+  border: 1px solid var(--color-amber-deep);
   padding: 1px 5px;
-  font-size: 13px;
+  font-size: 0.82em;
   font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+/* ── Tables ── */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2em 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--color-amber-deep);
+  padding: 8px 12px;
+  text-align: left;
+  line-height: 1.55;
+}
+
+.prose th {
+  color: var(--color-amber);
+  font-weight: 600;
+  background: var(--color-bg2);
+  white-space: nowrap;
+}
+
+.prose td { color: var(--read-fg); }
+
+/* Interactive MDX widgets sit outside the prose rhythm */
+.prose figure { margin: 2em 0; }
+
+/* ═══════════════════════════════════════════
+   Article footer — where to go next
+   ═══════════════════════════════════════════ */
+.moreReading {
+  margin-top: 80px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-amber-deep);
+}
+
+.moreReadingHead {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-amber);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.moreReadingGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--color-amber-deep);
+  border: 1px solid var(--color-amber-deep);
+}
+
+.moreReadingItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--color-bg);
+  border: none;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.moreReadingItem:hover { background: var(--color-amber-sub); }
+
+.moreReadingItem:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: -2px;
+}
+
+.moreReadingTitle {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-amber-text);
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+
+.moreReadingMeta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--read-muted);
 }
 
 .backLink {
-  margin-top: 60px;
-  padding-top: 24px;
-  border-top: 1px dashed var(--color-amber-deep);
+  margin-top: 40px;
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
-.backLink a {
-  color: var(--color-amber-dim);
+.backLink a,
+.backLink button {
+  color: var(--read-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
   text-decoration: none;
-  transition: color 0.1s;
+  transition: color var(--duration-fast);
 }
 
-.backLink a:hover { color: var(--color-magenta); }
+.backLink a:hover,
+.backLink button:hover { color: var(--color-magenta); }
 
-/* ── Status bar ── */
-.statusbar {
-  flex-shrink: 0;
-  background: var(--color-amber);
-  color: var(--color-bg);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 5px 22px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  letter-spacing: 0.04em;
-}
+/* ═══════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════ */
 
-.statusMode {
-  background: var(--color-magenta);
-  color: #fff;
-  padding: 2px 9px;
-  margin: -5px 0;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  font-size: 10.5px;
-}
-
-/* ── Tablet (≤1024px) ── */
+/* Tablet — the rail is gone, so the measure recentres itself */
 @media (max-width: 1024px) {
-  .article { padding: 36px 36px 80px; }
-  .prose h2 { font-size: 21px; margin: 32px 0 14px; }
-  .prose h3 { font-size: 16px; margin: 24px 0 10px; }
+  .article { padding: 0 32px 90px; }
+  .progressTrack { margin-inline: -32px !important; }
+  .postMeta { margin-top: 44px; }
+  .prose pre { margin-inline: -16px; }
 }
 
-/* ── Mobile (≤640px) ── */
+/* Mobile */
 @media (max-width: 640px) {
-  .article { padding: 24px 16px 60px; }
-  .postTitle { text-shadow: 1px 1px 0 var(--color-amber-deep); }
-  .postExcerpt { font-size: 15px; margin-bottom: 20px; }
-  .prose { font-size: 15px; }
-  .prose h2 { font-size: 19px; margin: 28px 0 12px; }
-  .prose h3 { font-size: 15px; }
-  .prose pre { padding: 14px 12px; font-size: 11.5px; margin: 18px -4px; }
-  .prose blockquote { padding-left: 14px; margin: 18px 0; }
-  .prose ul, .prose ol { margin-left: 16px; }
-  .backLink { margin-top: 40px; }
+  .article { padding: 0 20px 70px; }
+  .progressTrack { margin-inline: -20px !important; }
+  .postMeta { margin-top: 28px; margin-bottom: 14px; }
+  .postExcerpt { font-size: 17px; margin-bottom: 24px; }
+  .divider { margin-bottom: 32px; }
+
+  .prose { font-size: 17px; line-height: 1.7; }
+  .prose h2 { font-size: 22px; margin: 2em 0 0.55em; }
+  .prose h3 { font-size: 18px; }
+  .prose pre {
+    margin: 1.6em -20px;
+    padding: 14px 16px;
+    font-size: 12px;
+    border-inline: none;
+  }
+  .prose blockquote { padding-left: 16px; margin: 1.6em 0; }
+  .prose ul, .prose ol { margin-left: 1.1em; }
+
+  .moreReading { margin-top: 56px; }
+  .moreReadingGrid { grid-template-columns: 1fr; }
 }

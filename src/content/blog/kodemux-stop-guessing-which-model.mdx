@@ -68,6 +68,8 @@ But for a simple one — "fix a typo in the README" — the `agents` line just�
 
 Silence isn't the same as "don't parallelize." Silence is just silence — and if you're the one reading the recommendation, an absent line and an ignored field look identical. I'd built a tool to stop me from guessing, and it was quietly asking me to keep guessing on the majority case.
 
+### The fix, in three places at once
+
 I fixed it the same day, in three places at once — the CLI's text output, the Claude Code hook's context injection, and the copy-paste skill's instructions — so a task that should run single-threaded now says so, every time:
 
 ```
@@ -75,6 +77,8 @@ agents: 1 — do not parallelize this; a single agent working
 sequentially is enough, extra agents would just add
 coordination overhead.
 ```
+
+### Why I'm telling you about it
 
 I'm including this in the post instead of quietly patching it and moving on, because it's the most honest thing I can tell you about building developer tools: you don't find the gaps by staring at the code. You find them by actually using the thing, out loud, in front of someone — even if that someone is just yourself, writing a blog post about it.
 

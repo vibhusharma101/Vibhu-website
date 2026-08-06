@@ -38,11 +38,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     <BlogShell
       posts={allPosts}
       activeSlug={slug}
-      otherPosts={otherPosts}
       tabFile={`${slug}.mdx`}
       statusLine={`Markdown · ${meta.readTime} · ${meta.date}`}
     >
-      <div className={styles.article}>
+      <div className={styles.article} data-article>
+        <div className={styles.progressTrack} aria-hidden>
+          <div className={styles.progressBar} />
+        </div>
+
         <div className={styles.postMeta}>
           <time>{meta.date}</time>
           <span>·</span>
@@ -58,7 +61,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <p className={styles.postExcerpt}>{meta.excerpt}</p>
         <hr className={styles.divider} />
 
-        <div className={styles.prose}>
+        <div className={styles.prose} data-prose>
           <MDXRemote
             source={content}
             components={mdxComponents}
@@ -77,8 +80,23 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           />
         </div>
 
+        {/* Next steps live at the end, where a finished reader wants them */}
+        {otherPosts.length > 0 && (
+          <div className={styles.moreReading}>
+            <p className={styles.moreReadingHead}>Keep reading</p>
+            <div className={styles.moreReadingGrid}>
+              {otherPosts.slice(0, 4).map(p => (
+                <Link key={p.slug} href={`/blog/${p.slug}`} className={styles.moreReadingItem}>
+                  <p className={styles.moreReadingTitle}>{p.title}</p>
+                  <span className={styles.moreReadingMeta}>{p.date} · {p.readTime}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className={styles.backLink}>
-          <Link href="/blog">← back to blog</Link>
+          <Link href="/blog">← all posts</Link>
         </div>
       </div>
     </BlogShell>

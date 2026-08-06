@@ -86,6 +86,8 @@ One constraint shaped everything. A Stop hook can only make the agent *continue*
 
 Since its whole purpose is to *be* a guarantee, one property dominates: **an unverifiable state must never let it quietly disarm.**
 
+### Four PRs, fifty-four findings
+
 Which is exactly what I got wrong. I shipped it as four PRs — one per repo — and PRS reviewed them:
 
 <PrsConvergence />
@@ -107,9 +109,13 @@ block() {
 }
 ```
 
+### Round 4 — a bug in my fix, not my code
+
 Round 4 surprised me most, because it wasn't finding a bug in my original code — it was finding one in my *fix*. I'd made "CI returned no rows" keep the hook armed, which reads as the safe choice. But a repo with no checks configured would then never disarm, and the loop could never terminate. I'd traded a fail-open bug for an infinite loop, and PRS caught the trade.
 
 **17 → 17 → 15 → 5 → 0. Fifty-four findings, every one addressed**, each fix landing with a test until the suite reached seventeen mocked cases.
+
+### The one finding I didn't fix
 
 And exactly one finding I *didn't* fix: an ambiguous `git` state with no reliable shell-level distinction between "not a repository" and "corrupted metadata." Reasoned-**accepted** as a known limitation, in writing, on the thread.
 

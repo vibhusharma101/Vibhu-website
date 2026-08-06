@@ -78,11 +78,6 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
               <span>·</span>
               <span>{featured.readTime}</span>
             </div>
-            <div className={s.blogTileTagRow}>
-              {featured.tags.slice(0, 3).map(tag => (
-                <span key={tag} className={s.blogTileTag}>{tag}</span>
-              ))}
-            </div>
             <span className={s.blogFeaturedStripCta}>→ read post</span>
           </div>
         </div>
@@ -98,18 +93,19 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
               className={s.blogTile}
               onClick={() => onSelectPost(post.slug)}
             >
-              <div className={s.blogTileTop}>
-                <span className={s.blogTileReadTime}>{post.readTime}</span>
-                <div className={s.blogTileTagRow}>
-                  {post.tags.slice(0, 2).map(tag => (
-                    <span key={tag} className={s.blogTileTag}>{tag}</span>
-                  ))}
-                </div>
-              </div>
+              {/*
+                Title and excerpt lead; everything else is one quiet
+                line at the bottom. The old tile carried six competing
+                data points, which is what made the grid hard to scan.
+              */}
               <h3 className={s.blogTileTitle}>{post.title}</h3>
               <p className={s.blogTileExcerpt}>{post.excerpt}</p>
               <div className={s.blogTileMeta}>
-                <time dateTime={post.date}>{post.date}</time>
+                <span>
+                  <time dateTime={post.date}>{post.date}</time>
+                  {' · '}
+                  {post.readTime}
+                </span>
                 <span className={s.blogTileCta}>→ read</span>
               </div>
             </button>
