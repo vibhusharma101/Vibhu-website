@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { BlogPost } from '@/types/blog';
+import { ReadingRail } from './ReadingRail';
 import s from '../shell/shell.module.css';
 
 type Lang = 'tsx' | 'ts' | 'md' | 'sh';
@@ -25,13 +26,12 @@ const BADGE: Record<Lang, { color: string; bg: string }> = {
 interface Props {
   posts: BlogPost[];
   activeSlug?: string | null;
-  otherPosts?: BlogPost[];
   tabFile: string;
   statusLine: string;
   children: React.ReactNode;
 }
 
-export function BlogShell({ posts, activeSlug, otherPosts = [], tabFile, statusLine, children }: Props) {
+export function BlogShell({ posts, activeSlug, tabFile, statusLine, children }: Props) {
   const [pagesOpen, setPagesOpen] = useState(false);
   const [blogOpen, setBlogOpen] = useState(true);
 
@@ -138,24 +138,17 @@ export function BlogShell({ posts, activeSlug, otherPosts = [], tabFile, statusL
           </div>
         </header>
 
-        {/* Main */}
+        {/*
+          Main. No line-number gutter here: on a prose page those 80
+          numbers count nothing and just crowd the left edge of the
+          text. The right rail is a table of contents rather than a
+          list of other posts — "where am I" is the question a reader
+          has mid-article; "what else is there" belongs at the end.
+        */}
         <main className={s.main}>
           <div className={s.panel}>
-            <Gutter />
             {children}
-            {otherPosts.length > 0 && (
-              <aside className={s.articleSidebar}>
-                <div className={s.articleSidebarHead}>{'// other posts'}</div>
-                <div className={s.articleSidebarList}>
-                  {otherPosts.map(p => (
-                    <Link key={p.slug} href={`/blog/${p.slug}`} className={s.articleSidebarItem}>
-                      <p className={s.articleSidebarItemTitle}>{p.title}</p>
-                      <span className={s.articleSidebarItemMeta}>{p.date} · {p.readTime}</span>
-                    </Link>
-                  ))}
-                </div>
-              </aside>
-            )}
+            <ReadingRail slug={activeSlug ?? tabFile} />
           </div>
         </main>
 
@@ -192,14 +185,5 @@ function LangBadge({ lang }: { lang: Lang }) {
     }}>
       {lang}
     </span>
-  );
-}
-
-function Gutter() {
-  const lines = Array.from({ length: 80 }, (_, i) => i + 1);
-  return (
-    <div className={s.gutter} aria-hidden>
-      {lines.map(n => <span key={n} className={s.gutterLine} />)}
-    </div>
   );
 }

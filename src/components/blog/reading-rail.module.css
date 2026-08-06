@@ -1,0 +1,73 @@
+/* ── Reading rail — TOC + position, right of the article ── */
+.rail {
+  width: 208px;
+  min-width: 208px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--color-amber-deep);
+  background: var(--color-bg2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.head {
+  padding: 16px 16px 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--color-amber);
+  letter-spacing: 0.18em;
+  border-bottom: 1px solid var(--color-amber-deep);
+  flex-shrink: 0;
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0 24px;
+}
+
+.list::-webkit-scrollbar { width: 3px; }
+.list::-webkit-scrollbar-thumb { background: var(--color-amber-deep); }
+
+.item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  padding: 6px 14px 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--read-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.item:hover { color: var(--color-amber-text); }
+
+.item:focus-visible {
+  outline: 1px solid var(--color-amber);
+  outline-offset: -1px;
+}
+
+/* h3 entries sit one step in, quieter */
+.sub {
+  padding-left: 26px;
+  font-size: 10.5px;
+  opacity: 0.78;
+}
+
+.active {
+  color: var(--color-amber);
+  border-left-color: var(--color-magenta);
+}
+
+.sub.active { opacity: 1; }
+
+/* The rail is a desktop affordance — below 1024px the article
+   takes the full width and the TOC would cost more than it gives. */
+@media (max-width: 1024px) {
+  .rail { display: none; }
+}

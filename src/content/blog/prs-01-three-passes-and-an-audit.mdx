@@ -99,11 +99,15 @@ They don't. Both come from the same place: **the model was asked to review code 
 
 When it guessed and got lucky, that was a finding. When it guessed and got unlucky, that was noise. When it correctly declined to guess, that was silence. One root cause, three symptoms — and no amount of prompt-tuning moves all three in the right direction at once, because tuning only trades guessing for declining to guess.
 
+### Why a better model wouldn't have fixed it
+
 So the fix was never going to be a better model. Three of the four failure modes aren't intelligence failures at all. The model wasn't too dumb to know the enum's members; it was **never shown them**. It wasn't too dumb to respect our conventions; it was **never told them**. It didn't rubber-stamp for lack of capacity; it rubber-stamped because **nothing forced it to spend any**.
 
 That gave me the thesis for everything that followed:
 
 > Precision is an **epistemics** problem before it's a **model** problem. Constrain what the model may claim, give it exactly the context it needs to claim more, and prove every guarantee in code rather than convention.
+
+### What follows in this series
 
 Which maps to the rest of this series:
 
