@@ -56,6 +56,8 @@ Pick a symbol and watch both halves:
 
 <PrsSymbolMap />
 
+### Why per-file rows survive change
+
 The reason is maintenance under change, and it's worth spelling out.
 
 A **per-file row is self-contained.** When a file changes, you re-parse it and overwrite its single row. Anything it stopped referencing disappears for free — it's simply absent from the new list. There is no cleanup step, so there is no cleanup step to forget.
@@ -63,6 +65,8 @@ A **per-file row is self-contained.** When a file changes, you re-parse it and o
 The **reverse index has the opposite shape.** It pools contributions from every file in the repo, so one file edit ripples into scattered entries: add this file to `computeTotal`'s list, remove it from `Order`'s, then check whether anything *else* in this file still references `Order` before you remove it. Miss one and nothing crashes — the map just **silently lies**, and a silently wrong dependency map is a machine for generating confident, wrong blast-radius claims.
 
 > **Store the simple facts. Derive the fast lookup on read.**
+
+### The payoff: incremental caching, O(1) lookups
 
 It also makes caching genuinely incremental. Rows are keyed by commit SHA, so a push re-parses only the files in its diff and reuses everything else.
 

@@ -60,6 +60,20 @@
 }
 
 /* ==========================================================
+   Reading tokens — long-form article surface
+   Amber is a UI colour: high chroma on pitch-black halates
+   over a 10-minute read. Body copy drops to a low-chroma warm
+   paper tone; amber is reserved for headings and accents so
+   the identity survives while the prose stays comfortable.
+   ========================================================== */
+
+:root {
+  --read-fg:      #e2d5c2; /* body copy      — 14.2:1 on --color-bg */
+  --read-muted:   #a1937f; /* captions, meta —  6.8:1 on --color-bg */
+  --read-measure: 68ch;    /* ~68–72 chars per line at 18px serif   */
+}
+
+/* ==========================================================
    Base styles
    ========================================================== */
 

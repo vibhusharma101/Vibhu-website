@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import type { BlogPost } from '@/types/blog';
+import { ReadingRail } from '@/components/blog/ReadingRail';
 import styles from '@/app/blog/[slug]/blog-post.module.css';
-import s from '@/components/shell/shell.module.css';
 
 interface Props {
   post: BlogPost;
@@ -17,23 +17,22 @@ export function BlogPostPane({ post, content, otherPosts, onBack, onSelectPost }
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    // 'instant' matters: .article opts into scroll-behavior: smooth, which
+    // would otherwise animate a post switch back through the whole article.
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [post.slug]);
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
       {/* ── Article ── */}
-      <div ref={scrollRef} className={styles.article}>
+      <div ref={scrollRef} className={styles.article} data-article>
+        <div className={styles.progressTrack} aria-hidden>
+          <div className={styles.progressBar} />
+        </div>
+
         <div className={styles.postMeta}>
-          <button
-            onClick={onBack}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--color-magenta)', fontSize: 11,
-              fontFamily: 'var(--font-mono)', padding: 0,
-            }}
-          >
+          <button type="button" onClick={onBack} className={styles.metaBack}>
             ← blog.md
           </button>
           <span>·</span>
@@ -53,41 +52,35 @@ export function BlogPostPane({ post, content, otherPosts, onBack, onSelectPost }
         <p className={styles.postExcerpt}>{post.excerpt}</p>
         <hr className={styles.divider} />
 
-        <div className={styles.prose}>{content}</div>
+        <div className={styles.prose} data-prose>{content}</div>
+
+        {/* Next steps live at the end, where a finished reader wants them */}
+        {otherPosts.length > 0 && (
+          <div className={styles.moreReading}>
+            <p className={styles.moreReadingHead}>Keep reading</p>
+            <div className={styles.moreReadingGrid}>
+              {otherPosts.slice(0, 4).map(op => (
+                <button
+                  key={op.slug}
+                  type="button"
+                  onClick={() => onSelectPost(op.slug)}
+                  className={styles.moreReadingItem}
+                >
+                  <p className={styles.moreReadingTitle}>{op.title}</p>
+                  <span className={styles.moreReadingMeta}>{op.date} · {op.readTime}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className={styles.backLink}>
-          <button
-            onClick={onBack}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--color-amber-dim)', fontFamily: 'var(--font-mono)',
-              fontSize: 12, padding: 0,
-            }}
-          >
-            ← back to blog
-          </button>
+          <button type="button" onClick={onBack}>← all posts</button>
         </div>
       </div>
 
-      {/* ── Other posts sidebar ── */}
-      {otherPosts.length > 0 && (
-        <aside className={s.articleSidebar}>
-          <div className={s.articleSidebarHead}>{'// other posts'}</div>
-          <div className={s.articleSidebarList}>
-            {otherPosts.map(op => (
-              <button
-                key={op.slug}
-                onClick={() => onSelectPost(op.slug)}
-                className={s.articleSidebarItem}
-                style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: 'none' }}
-              >
-                <p className={s.articleSidebarItemTitle}>{op.title}</p>
-                <span className={s.articleSidebarItemMeta}>{op.date} · {op.readTime}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
-      )}
+      {/* ── Table of contents + progress ── */}
+      <ReadingRail slug={post.slug} />
     </div>
   );
 }

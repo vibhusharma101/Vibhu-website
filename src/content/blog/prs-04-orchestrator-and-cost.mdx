@@ -47,11 +47,15 @@ Pick what landed in the PR:
 
 <PrsOrchestrator />
 
+### The two scenarios that define the design
+
 The **auth** and **triage errored** scenarios are the two that define the design.
 
 In the auth case, triage sees a small, unremarkable diff and proposes a cheap review. It's not wrong about the size — it's wrong about the *stakes*, which a diff's shape doesn't tell you. Code overrules it: anything touching auth, money, DB queries or migrations gets security, data and deep, regardless of what the model thought. Backend repos always get the full set. Quick Scan always runs, on everything.
 
 In the error case, the orchestrator being unavailable falls back to the **full** review, not the cheap one. This is a deliberate asymmetry: an unavailable opinion must never be read as "nothing to worry about here." That's the same fail-closed instinct that shows up again, painfully, in [Part 5](/blog/prs-05-pushing-accuracy-further).
+
+### Propose cheap, constrain in code
 
 The pattern generalises, and I've reused it three times since:
 
