@@ -19,13 +19,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = await getPostBySlug(slug);
   if (!post) return {};
   const { meta } = post;
+  const resolvedTitle = `${meta.title} — Vibhanshu Sharma`;
   return {
     title: meta.title,
     description: meta.excerpt,
     keywords: meta.tags,
     alternates: { canonical: `/blog/${slug}` },
     openGraph: {
-      title: meta.title,
+      title: resolvedTitle,
       description: meta.excerpt,
       url: `/blog/${slug}`,
       type: 'article',
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       tags: meta.tags,
     },
     twitter: {
-      title: meta.title,
+      title: resolvedTitle,
       description: meta.excerpt,
     },
   };
