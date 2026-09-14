@@ -107,6 +107,12 @@ Key skills for this project:
 - `postcss.config.*` — PostCSS for Mantine
 - `next.config.ts` — Next.js config (currently minimal)
 
+## Release Process
+
+Branches: `main` is production (deploys from here), `develop` is the integration branch.
+
+All work goes: **feature branch → PR into `develop`** → merge → **PR from `develop` into `main`**. Never commit or push directly to `develop` or `main` — a `PreToolUse` hook (`.claude/hooks/block-direct-push.js`) blocks direct `git push` to either branch and will error out with instructions if you try.
+
 ## What NOT to Do
 
 - Don't add `'use client'` to components that don't need it
