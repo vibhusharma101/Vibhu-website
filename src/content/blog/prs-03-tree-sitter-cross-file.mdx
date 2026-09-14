@@ -4,6 +4,11 @@ excerpt: "Part 3 of 5 — The pass named Cross-File only ever received the files
 date: "2026-07-28"
 readTime: "10 min read"
 tags: ["ai", "code-review", "tree-sitter", "llms", "prs-series"]
+tldr:
+  - "The pass named 'Cross-File' only ever saw the files inside the diff — it never actually knew what else in the repo called the changed code."
+  - "tree-sitter parses every language in the stack into one symbol map: what each file defines and what it references."
+  - "Store simple per-file facts, derive the reverse index (symbol → files) at read time — nothing to forget to clean up when a file changes."
+  - "A second, per-PR system injects exact definitions (enums, schemas) as authoritative — but only when the extractor produced a complete block."
 published: true
 ---
 

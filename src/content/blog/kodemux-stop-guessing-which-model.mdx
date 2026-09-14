@@ -4,6 +4,11 @@ excerpt: "Every task, the same three decisions by hand: which model, how many ag
 date: "2026-07-25"
 readTime: "10 min read"
 tags: ["ai", "claude-code", "developer-tools", "open-source"]
+tldr:
+  - "kodemux automates three judgment calls: which Claude model to use, how many agents to run, and whether the diff has a leaked secret."
+  - "It floors the routing tier based on the real git diff — touching src/auth/** routes like auth code even if the prompt sounds trivial."
+  - "Found a bug in itself while writing this post: it stayed silent instead of explicitly saying 'don't parallelize' on single-agent tasks."
+  - "Install as a CLI with native Claude Code hooks, or copy-paste the routing rubric as a markdown skill — no Node required."
 published: true
 ---
 

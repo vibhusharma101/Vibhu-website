@@ -4,6 +4,11 @@ excerpt: "Part 2 of 5 — Breaking the three-pass monolith into stateless single
 date: "2026-07-28"
 readTime: "10 min read"
 tags: ["ai", "code-review", "llms", "prompt-engineering", "prs-series"]
+tldr:
+  - "Replaced one five-job prompt with a fan-out of small, stateless, single-purpose passes — each owns exactly one concern."
+  - "Each repo ships its own manifest of house rules, so a pattern mandated in the backend isn't flagged as a bug in the iOS app."
+  - "Rule 10 forbids asserting anything about a symbol not visible in the input — cap confidence, mark it unverified, ask instead of assert."
+  - "A mandatory finding template prices speculation: a vague hunch can't fill in a verbatim quote or a concrete failing case."
 published: true
 ---
 

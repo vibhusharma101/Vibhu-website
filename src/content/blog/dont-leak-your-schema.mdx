@@ -4,6 +4,11 @@ excerpt: "Your DB calls a field cust_dn. Your integration partner and your UI sh
 date: "2026-07-09"
 readTime: "7 min read"
 tags: ["architecture", "integrations", "api-design", "databases"]
+tldr:
+  - "Never expose raw DB field names to consumers — once a partner integration depends on cust_dn, you can never rename it."
+  - "The manifest pattern maps a stable public id (customer_name) to a private physical path (cust_dn) that can change freely."
+  - "Renaming a column becomes a one-line manifest change instead of a breaking API migration."
+  - "It's a textbook anti-corruption layer: your storage schema and your public contract evolve on independent schedules."
 published: true
 ---
 

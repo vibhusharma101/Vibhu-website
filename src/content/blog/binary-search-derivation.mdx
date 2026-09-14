@@ -4,6 +4,11 @@ excerpt: "Not just how it works — why the math works. The integer overflow tra
 date: "2026-07-07"
 readTime: "8 min read"
 tags: ["algorithms", "computer-science", "mathematics"]
+tldr:
+  - "The textbook midpoint formula (low+high)/2 can integer-overflow on large arrays — this exact bug lived in Java for 9 years."
+  - "The safe formula is low + (high-low)/2 — algebraically identical, but the intermediate sum can never overflow."
+  - "O(log n) isn't just intuition — it falls straight out of solving n / 2^k = 1 for k."
+  - "A billion-element array takes at most 30 comparisons; that asymptote is the whole point of algorithm design."
 published: true
 ---
 

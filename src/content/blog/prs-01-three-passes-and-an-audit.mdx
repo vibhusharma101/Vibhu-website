@@ -4,6 +4,11 @@ excerpt: "Part 1 of 5 — The first version of PRS at Powerplay was three sequen
 date: "2026-07-28"
 readTime: "9 min read"
 tags: ["ai", "code-review", "llms", "engineering", "prs-series"]
+tldr:
+  - "v1 was three sequential LLM passes over a diff — it shipped, caught real bugs, and was simultaneously too noisy and too quiet."
+  - "A hand-scored 7-week audit found the noise came from asserting things about code it couldn't see and from flagging our own conventions as bugs."
+  - "The 'too quiet' half was invisible to that same audit — a precision score only grades comments the bot actually wrote."
+  - "Both failures trace to one root cause: the model was reviewing code it could not see, under rules it had never been told."
 published: true
 ---
 

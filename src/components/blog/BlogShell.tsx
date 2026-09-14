@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { BlogPost } from '@/types/blog';
 import { ReadingRail } from './ReadingRail';
+import { BlogSidebarTree } from '../shell/BlogSidebarTree';
+import { buildBlogSidebarTree } from '@/lib/blog-groups';
 import s from '../shell/shell.module.css';
 
 type Lang = 'tsx' | 'ts' | 'md' | 'sh';
@@ -36,6 +38,9 @@ export function BlogShell({ posts, activeSlug, tabFile, statusLine, children }: 
   const [blogOpen, setBlogOpen] = useState(true);
 
   const tabName = tabFile.replace(/\.mdx?$/, '');
+  const activeGroupId = activeSlug
+    ? buildBlogSidebarTree(posts).groups.find(g => g.posts.some(p => p.slug === activeSlug))?.id
+    : undefined;
 
   return (
     <div className={s.shell}>
@@ -86,16 +91,22 @@ export function BlogShell({ posts, activeSlug, tabFile, statusLine, children }: 
             </Link>
           )}
 
-          {blogOpen && posts.map(p => (
-            <Link
-              key={p.slug}
-              href={`/blog/${p.slug}`}
-              className={`${s.sidebarFile} ${s.indent2} ${activeSlug === p.slug ? s.active : ''}`}
-            >
-              <LangBadge lang="md" />
-              <span className={s.fileName}>{p.slug}.mdx</span>
-            </Link>
-          ))}
+          {blogOpen && (
+            <BlogSidebarTree
+              posts={posts}
+              defaultOpen={activeGroupId ? [activeGroupId] : []}
+              renderFile={(p, indent) => (
+                <Link
+                  key={p.slug}
+                  href={`/blog/${p.slug}`}
+                  className={`${s.sidebarFile} ${indent === 3 ? s.indent3 : s.indent2} ${activeSlug === p.slug ? s.active : ''}`}
+                >
+                  <LangBadge lang="md" />
+                  <span className={s.fileName}>{p.slug}.mdx</span>
+                </Link>
+              )}
+            />
+          )}
         </div>
 
         <div className={s.sidebarBottom}>

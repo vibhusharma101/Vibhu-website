@@ -71,8 +71,8 @@
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--read-muted);
-  margin-top: 64px;
-  margin-bottom: 18px;
+  margin-top: 44px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
@@ -97,12 +97,12 @@
 
 .postTitle {
   font-family: var(--font-serif);
-  font-size: clamp(30px, 3.6vw, 44px);
+  font-size: clamp(28px, 3.4vw, 40px);
   font-weight: 700;
   line-height: 1.12;
   letter-spacing: -0.025em;
   color: var(--color-amber);
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   text-wrap: balance;
 }
 
@@ -113,17 +113,61 @@
  */
 .postExcerpt {
   font-family: var(--font-serif);
-  font-size: 19px;
-  line-height: 1.62;
+  font-size: 18px;
+  line-height: 1.58;
   color: var(--read-muted);
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   text-wrap: pretty;
 }
 
 .divider {
   border: none;
   border-top: 1px solid var(--color-amber-deep);
-  margin-bottom: 44px;
+  margin-bottom: 28px;
+}
+
+/*
+ * TL;DR — the gist, up front. Readers scanning to decide whether
+ * to commit get their answer in four lines instead of a full deck
+ * paragraph; readers already committed can skip straight past it.
+ */
+.tldr {
+  border: 1px solid var(--color-amber-deep);
+  border-left: 2px solid var(--color-amber);
+  background: var(--color-bg2);
+  padding: 16px 20px;
+  margin-bottom: 40px;
+}
+
+.tldrLabel {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-amber);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.tldrList {
+  margin: 0;
+  padding-left: 1.1em;
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--read-fg);
+}
+
+.tldrList li {
+  margin-bottom: 6px;
+}
+
+.tldrList li:last-child {
+  margin-bottom: 0;
+}
+
+.tldrList li::marker {
+  color: var(--color-amber-dim);
 }
 
 /* ═══════════════════════════════════════════

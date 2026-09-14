@@ -7,6 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { BlogShell } from '@/components/blog/BlogShell';
+import { TldrBlock } from '@/components/blog/TldrBlock';
 import { mdxComponents } from '@/components/blog/mdxComponents';
 import styles from './blog-post.module.css';
 
@@ -92,6 +93,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <h1 className={styles.postTitle}>{meta.title}</h1>
           <p className={styles.postExcerpt}>{meta.excerpt}</p>
           <hr className={styles.divider} />
+
+          <TldrBlock points={meta.tldr} />
 
           <div className={styles.prose} data-prose>
             <MDXRemote
