@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ShellPage } from '@/components/shell/ShellPage';
 import type { PanelId } from '@/types/panel';
-import { buildPanelMetadata } from '@/lib/panel-metadata';
+import { buildPanelMetadata, PANEL_META } from '@/lib/panel-metadata';
+import { BreadcrumbJsonLd } from '@/components/seo/BreadcrumbJsonLd';
 
 // 'blog' is included so the shell's client-side tab state stays consistent, but the
 // static route at src/app/blog/page.tsx always wins for the URL /blog — see that
@@ -22,5 +23,17 @@ export async function generateMetadata({ params }: { params: Promise<{ panel: st
 export default async function PanelPage({ params }: { params: Promise<{ panel: string }> }) {
   const { panel } = await params;
   if (!PANELS.includes(panel as PanelId)) redirect('/home');
-  return <ShellPage initialPanel={panel as PanelId} />;
+  const panelId = panel as PanelId;
+
+  const crumbs =
+    panelId === 'home'
+      ? [{ name: 'Home', path: '/home' }]
+      : [{ name: 'Home', path: '/home' }, { name: PANEL_META[panelId].title ?? panelId, path: `/${panelId}` }];
+
+  return (
+    <>
+      <BreadcrumbJsonLd items={crumbs} />
+      <ShellPage initialPanel={panelId} />
+    </>
+  );
 }
