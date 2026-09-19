@@ -9,6 +9,7 @@ import { getAllPosts, getPostBySlug } from '@/lib/blog';
 import { BlogShell } from '@/components/blog/BlogShell';
 import { TldrBlock } from '@/components/blog/TldrBlock';
 import { mdxComponents } from '@/components/blog/mdxComponents';
+import { BreadcrumbJsonLd } from '@/components/seo/BreadcrumbJsonLd';
 import styles from './blog-post.module.css';
 
 export async function generateStaticParams() {
@@ -62,8 +63,15 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     keywords: meta.tags.join(', '),
   };
 
+  const crumbs = [
+    { name: 'Home', path: '/home' },
+    { name: 'Blog', path: '/blog' },
+    { name: meta.title, path: `/blog/${slug}` },
+  ];
+
   return (
     <>
+      <BreadcrumbJsonLd items={crumbs} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
