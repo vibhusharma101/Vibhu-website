@@ -4,6 +4,11 @@ excerpt: "TLS protects a password in transit — but it's still plaintext in the
 date: "2026-07-09"
 readTime: "9 min read"
 tags: ["security", "aws", "cryptography", "backend"]
+tldr:
+  - "TLS only protects a secret in transit — it's still plaintext in your Network tab, server logs, and database unless you encrypt it yourself."
+  - "Encrypt with RSA in the browser before the secret is sent; the backend decrypts and stores only an SSM path, never the plaintext."
+  - "Split IAM roles so the API server can write secrets but never read them back — only the background worker can."
+  - "A small keypair registry lets you rotate encryption keys without breaking requests already in flight."
 published: true
 ---
 

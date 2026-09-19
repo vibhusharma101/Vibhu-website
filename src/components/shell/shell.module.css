@@ -163,6 +163,14 @@
 .sidebarFolder.indent1 { padding-left: 22px; }
 .sidebarFolder.indent2 { padding-left: 34px; }
 
+.folderCount {
+  font-size: 9px;
+  color: var(--color-amber-dim);
+  margin-left: auto;
+  padding-left: 6px;
+  flex-shrink: 0;
+}
+
 .fileName {
   flex: 1;
   overflow: hidden;

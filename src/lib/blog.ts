@@ -31,6 +31,7 @@ export function getAllPosts(): BlogPost[] {
         readTime:  data.readTime ?? rt.text,
         tags:      data.tags     ?? [],
         published: data.published ?? false,
+        tldr:      data.tldr     ?? [],
       } satisfies BlogPost;
     })
     .filter(p => p.published)
@@ -53,6 +54,7 @@ export async function getPostBySlug(slug: string): Promise<{ meta: BlogPost; con
     readTime:  data.readTime ?? rt.text,
     tags:      data.tags     ?? [],
     published: data.published ?? false,
+    tldr:      data.tldr     ?? [],
   };
 
   return { meta, content };

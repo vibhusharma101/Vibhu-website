@@ -4,6 +4,11 @@ excerpt: "A user clicks 'Sync now' and expects it to just work — but the job r
 date: "2026-07-09"
 readTime: "10 min read"
 tags: ["backend", "systems-design", "databases", "architecture"]
+tldr:
+  - "Long-running jobs on the API server block requests, die on every deploy, and steal CPU from real traffic."
+  - "Put the queue in a DB table: enqueue as PENDING, atomically claim with one findOneAndUpdate, finalize to DONE or FAILED."
+  - "A stale-run sweep reaps jobs stuck in RUNNING after a worker crash, so nothing sits stuck forever."
+  - "Good enough for on-demand or scheduled work at modest volume — reach for a real queue when you need high throughput or exactly-once delivery."
 published: true
 ---
 

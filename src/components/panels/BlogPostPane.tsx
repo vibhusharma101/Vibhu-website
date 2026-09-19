@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { BlogPost } from '@/types/blog';
 import { ReadingRail } from '@/components/blog/ReadingRail';
+import { TldrBlock } from '@/components/blog/TldrBlock';
 import styles from '@/app/blog/[slug]/blog-post.module.css';
 
 interface Props {
@@ -51,6 +52,8 @@ export function BlogPostPane({ post, content, otherPosts, onBack, onSelectPost }
         <h1 className={styles.postTitle}>{post.title}</h1>
         <p className={styles.postExcerpt}>{post.excerpt}</p>
         <hr className={styles.divider} />
+
+        <TldrBlock points={post.tldr} />
 
         <div className={styles.prose} data-prose>{content}</div>
 

@@ -4,6 +4,11 @@ excerpt: "Part 4 of 5 — Ten passes and two context layers on every push costs 
 date: "2026-07-28"
 readTime: "10 min read"
 tags: ["ai", "llms", "cost-optimization", "code-review", "prs-series"]
+tldr:
+  - "Ten passes plus two context layers on every push got expensive enough to risk being throttled off — and a reviewer that's off isn't a reviewer."
+  - "A cheap triage model proposes which passes to run; deterministic code overrules it for anything touching auth, money, or migrations."
+  - "Model tiering, prompt-prefix caching, bigger diff chunks, and budget guards stack multiplicatively, not additively."
+  - "The invariant: savings come from where compute is spent, never from how much reasoning is allowed."
 published: true
 ---
 

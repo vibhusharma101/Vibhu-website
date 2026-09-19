@@ -4,6 +4,11 @@ excerpt: "Your app lets an admin type in a server URL, then sends credentials to
 date: "2026-07-09"
 readTime: "8 min read"
 tags: ["security", "backend", "networking", "ssrf"]
+tldr:
+  - "Letting an admin paste a server URL you then call is SSRF risk — even from a trusted admin whose account can later be compromised."
+  - "Validate the resolved IP, not the hostname, to defeat DNS-rebinding attacks that swap the destination after your check passes."
+  - "Pin destinations with an ops-controlled allowlist outside the database, so a compromised admin can't approve their own target."
+  - "Block private IPs by default but allowlist specific on-prem addresses explicitly — a blanket block breaks real enterprise setups."
 published: true
 ---
 

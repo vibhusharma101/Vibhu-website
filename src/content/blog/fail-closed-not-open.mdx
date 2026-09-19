@@ -4,6 +4,11 @@ excerpt: "The most dangerous security bug isn't a missing control — it's a con
 date: "2026-07-09"
 readTime: "7 min read"
 tags: ["security", "engineering-practices", "code-review"]
+tldr:
+  - "Fail-open bugs look defensive but quietly do the wrong thing when misconfigured — like falling back to plaintext storage instead of erroring."
+  - "Prefer allow-lists over deny-lists: a forgotten field gets dropped, not leaked."
+  - "Never default a security-relevant config value — throw if it's missing instead of guessing."
+  - "Show users a generic error message; log the real one server-side only."
 published: true
 ---
 

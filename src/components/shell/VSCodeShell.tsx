@@ -14,6 +14,8 @@ import { ContactPanel } from '@/components/panels/ContactPanel';
 import { BlogListPanel } from '@/components/panels/BlogListPanel';
 import { BlogPostPane } from '@/components/panels/BlogPostPane';
 import { ChatWidget } from '@/components/chat/ChatWidget';
+import { BlogSidebarTree } from './BlogSidebarTree';
+import { buildBlogSidebarTree } from '@/lib/blog-groups';
 import s from './shell.module.css';
 
 interface Props {
@@ -59,6 +61,10 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
   }, []);
 
   const currentTab = TABS.find(t => t.id === activePanel)!;
+
+  const activeBlogGroupId = selectedBlogSlug
+    ? buildBlogSidebarTree(posts).groups.find(g => g.posts.some(p => p.slug === selectedBlogSlug))?.id
+    : undefined;
 
   const pageFiles: Array<{ id: PanelId; filename: string; lang: Tab['lang']; git?: 'M' | 'U' }> = [
     { id: 'home',     filename: 'vibhanshu.tsx',  lang: 'tsx', git: 'M' },
@@ -130,16 +136,22 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             <span>📁</span><span>blog</span>
           </button>
 
-          {blogOpen && posts.map(post => (
-            <SidebarFile
-              key={`blog-${post.slug}`}
-              filename={`${post.slug}.mdx`}
-              lang="md"
-              active={activePanel === 'blog' && selectedBlogSlug === post.slug}
-              indent={2}
-              onClick={() => { setActivePanel('blog'); setSelectedBlogSlug(post.slug); setSidebarOpen(false); }}
+          {blogOpen && (
+            <BlogSidebarTree
+              posts={posts}
+              defaultOpen={activeBlogGroupId ? [activeBlogGroupId] : []}
+              renderFile={(post, indent) => (
+                <SidebarFile
+                  key={`blog-${post.slug}`}
+                  filename={`${post.slug}.mdx`}
+                  lang="md"
+                  active={activePanel === 'blog' && selectedBlogSlug === post.slug}
+                  indent={indent}
+                  onClick={() => { setActivePanel('blog'); setSelectedBlogSlug(post.slug); setSidebarOpen(false); }}
+                />
+              )}
             />
-          ))}
+          )}
 
         </div>
 
