@@ -10,6 +10,7 @@ import { BlogShell } from '@/components/blog/BlogShell';
 import { TldrBlock } from '@/components/blog/TldrBlock';
 import { mdxComponents } from '@/components/blog/mdxComponents';
 import { BreadcrumbJsonLd } from '@/components/seo/BreadcrumbJsonLd';
+import { absoluteUrl, PERSON_ID, SITE_NAME, SITE_URL } from '@/lib/site';
 import styles from './blog-post.module.css';
 
 export async function generateStaticParams() {
@@ -26,7 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: meta.title,
     description: meta.excerpt,
     keywords: meta.tags,
-    alternates: { canonical: `/blog/${slug}` },
+    alternates: { canonical: `/blog/${slug}`, types: { 'text/markdown': `/blog/${slug}.md` } },
+    other: { 'ai-summary': meta.excerpt },
     openGraph: {
       title: resolvedTitle,
       description: meta.excerpt,
@@ -58,8 +60,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     headline: meta.title,
     description: meta.excerpt,
     datePublished: meta.date,
-    author: { '@type': 'Person', name: 'Vibhanshu Sharma', url: 'https://www.viiforwin.in' },
-    url: `https://www.viiforwin.in/blog/${slug}`,
+    author: { '@type': 'Person', '@id': PERSON_ID, name: SITE_NAME, url: SITE_URL },
+    url: absoluteUrl(`/blog/${slug}`),
     keywords: meta.tags.join(', '),
   };
 

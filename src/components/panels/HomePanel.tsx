@@ -1,5 +1,6 @@
 import type { PanelId } from '@/types/panel';
 import { bio } from '@/data/bio';
+import { heroIntro } from '@/data/about';
 import { MathVisualizer } from './MathVisualizer';
 import s from './panels.module.css';
 
@@ -33,8 +34,8 @@ export function HomePanel({ onNavigate }: Props) {
         </h1>
 
         <p className={s.tagline}>
-          <b>I build AI-native products end-to-end — the agents and LLM pipelines, and the full stack that ships them.</b>{' '}
-          Three products taken from a blank repo to real users. <em>No templates, no vapor.</em>
+          <b>{heroIntro.lead}</b>{' '}
+          {heroIntro.text} <em>{heroIntro.emphasis}</em>
         </p>
 
         <div className={s.statsBar} role="list">
