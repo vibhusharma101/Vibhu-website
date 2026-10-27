@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cmd *)",
-      "Bash(python3 -c \"import playwright; print\\('playwright ok'\\)\")",
-      "PowerShell(New-Item *)"
-    ]
-  }
-}
