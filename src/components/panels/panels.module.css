@@ -143,6 +143,8 @@
 
 .blogFeaturedStrip:hover .blogFeaturedStripCta { opacity: 1; }
 
+
+
 /* Tile grid — 3 col desktop */
 /*
  * Two columns, not three. At three the title and excerpt were both
@@ -215,6 +217,15 @@
   border-top: 1px dashed var(--color-amber-deep);
 }
 
+.blogTileCategory {
+  color: var(--color-amber);
+  background-color: rgba(245, 166, 35, 0.1);
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid var(--color-amber-deep);
+  margin-right: 6px;
+}
+
 .blogTileCta {
   color: var(--color-magenta);
   font-size: 9.5px;
@@ -257,6 +268,25 @@
   display: flex;
   flex-direction: row;
   overflow: hidden;
+  position: relative;
+}
+
+.heroLayout::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 25% 50%, rgba(245, 166, 35, 0.06), transparent 60%),
+    radial-gradient(ellipse 50% 60% at 75% 40%, rgba(255, 20, 99, 0.04), transparent 55%);
+  animation: heroGlow 8s ease-in-out infinite alternate;
+}
+
+@keyframes heroGlow {
+  0% { opacity: 0.6; filter: blur(0px); }
+  50% { opacity: 1; filter: blur(2px); }
+  100% { opacity: 0.7; filter: blur(0px); }
 }
 
 .heroBody {
@@ -267,12 +297,16 @@
   overflow: hidden;
   padding: 36px 48px;
   border-right: 1px solid var(--color-amber-deep);
+  position: relative;
+  z-index: 1;
 }
 
 .heroRight {
   flex: 1;
   overflow: hidden;
   background: var(--color-bg);
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Math visualizer (right panel of hero) ── */
@@ -444,11 +478,19 @@
   transition: background var(--duration-fast), transform 0.1s, box-shadow 0.1s;
 }
 
-.btn::before { content: "▶  "; }
+.btn::before {
+  content: "▶  ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
 
 .btn:hover {
   background: var(--color-magenta);
   color: #000;
+}
+
+.btn:hover::before {
+  transform: translateX(3px);
 }
 
 .btn:active {

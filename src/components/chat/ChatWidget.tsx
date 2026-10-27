@@ -102,10 +102,29 @@ export function ChatWidget() {
 
       <div className={s.messages}>
         {messages.length === 0 && (
-          <div className={s.empty}>
-            <span>$ </span>ask me about my work,<br />
-            what I&apos;m building, or anything tech.
-          </div>
+          <>
+            <div className={s.empty}>
+              <span>$ </span>ask me about my work,<br />
+              what I&apos;m building, or anything tech.
+            </div>
+            <div className={s.suggestedPrompts}>
+              {[
+                'What\'s your tech stack?',
+                'Tell me about Vignam',
+                'What are you building at Powerplay?',
+                'How do you approach system design?',
+              ].map((prompt) => (
+                <button
+                  key={prompt}
+                  className={s.suggestedPrompt}
+                  onClick={() => { setInput(prompt); }}
+                  type="button"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {messages.map(msg => (
