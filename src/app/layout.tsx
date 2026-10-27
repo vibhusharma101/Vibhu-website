@@ -4,8 +4,7 @@ import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { bio } from '@/data/bio';
-
-const SITE_URL = 'https://www.viiforwin.in';
+import { PERSON_ID, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -13,8 +12,7 @@ export const metadata: Metadata = {
     default: 'Vibhanshu Sharma — AI Engineer & Founder',
     template: '%s — Vibhanshu Sharma',
   },
-  description:
-    'Vibhanshu Sharma is an AI engineer and founder in Bengaluru. He ships production AI — agents, RAG, and LLM products — and leads AI engineering at Powerplay, building software for the construction industry.',
+  description: SITE_DESCRIPTION,
   keywords: ['Vibhanshu Sharma', 'AI engineer', 'AI agents', 'RAG', 'LLM', 'generative AI', 'founder', 'full-stack engineer', 'Powerplay', 'IIT Roorkee', 'Bengaluru'],
   authors: [{ name: 'Vibhanshu Sharma', url: SITE_URL }],
   creator: 'Vibhanshu Sharma',
@@ -43,6 +41,7 @@ export const metadata: Metadata = {
 const personJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Person',
+  '@id': PERSON_ID,
   name: bio.name,
   url: SITE_URL,
   jobTitle: bio.currentRole,
@@ -59,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <a href="#panel-area" className="skip-to-content">Skip to content</a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}

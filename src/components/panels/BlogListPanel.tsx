@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import type { BlogPost } from '@/types/blog';
+import { buildBlogSidebarTree } from '@/lib/blog-groups';
 import s from './panels.module.css';
-
-const PAGE_SIZE = 6;
 
 interface Props {
   posts: BlogPost[];
@@ -12,22 +10,6 @@ interface Props {
 }
 
 export function BlogListPanel({ posts, onSelectPost }: Props) {
-  const [visible, setVisible] = useState(PAGE_SIZE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(v => Math.min(v + PAGE_SIZE, posts.length));
-      },
-      { threshold: 0.1 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [posts.length]);
-
   if (posts.length === 0) {
     return (
       <div className={s.blogComingSoon}>
@@ -48,9 +30,24 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
     );
   }
 
-  const [featured, ...rest] = posts;
-  const visibleRest = rest.slice(0, visible - 1);
-  const hasMore = visible < posts.length;
+  const { groups } = buildBlogSidebarTree(posts);
+
+  // Helper to recursively flatten posts for a group display and attach the label
+  const flattenGroupPostsWithLabel = (
+    group: typeof groups[0],
+    parentLabel: string = ''
+  ): (BlogPost & { categoryLabel: string })[] => {
+    const label = parentLabel ? `${parentLabel} / ${group.label}` : group.label;
+    const childPosts = group.subgroups
+      ? group.subgroups.flatMap(sg => flattenGroupPostsWithLabel(sg, label))
+      : [];
+    const directPosts = group.posts.map(p => ({ ...p, categoryLabel: label }));
+    return [...directPosts, ...childPosts];
+  };
+
+  const allPosts = groups
+    .flatMap(g => flattenGroupPostsWithLabel(g))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className={s.blogGrid}>
@@ -60,67 +57,28 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
         <span className={s.blogPostCount}>{posts.length} posts</span>
       </div>
 
-      {/* Featured — latest post, full width */}
-      <button
-        type="button"
-        className={s.blogFeaturedStrip}
-        onClick={() => onSelectPost(featured.slug)}
-      >
-        <div className={s.blogFeaturedStripInner}>
-          <div className={s.blogFeaturedStripLeft}>
-            <span className={s.blogFeaturedLabel}>LATEST POST</span>
-            <h2 className={s.blogFeaturedStripTitle}>{featured.title}</h2>
-            <p className={s.blogFeaturedStripExcerpt}>{featured.excerpt}</p>
-          </div>
-          <div className={s.blogFeaturedStripRight}>
-            <div className={s.blogFeaturedStripMeta}>
-              <time dateTime={featured.date}>{featured.date}</time>
-              <span>·</span>
-              <span>{featured.readTime}</span>
+      <div className={s.blogTileGrid}>
+        {allPosts.map(post => (
+          <button
+            key={post.slug}
+            type="button"
+            className={s.blogTile}
+            onClick={() => onSelectPost(post.slug)}
+          >
+            <h3 className={s.blogTileTitle}>{post.title}</h3>
+            <p className={s.blogTileExcerpt}>{post.excerpt}</p>
+            <div className={s.blogTileMeta}>
+              <span>
+                <span className={s.blogTileCategory}>{post.categoryLabel}</span>
+                <time dateTime={post.date}>{post.date}</time>
+                {' · '}
+                {post.readTime}
+              </span>
+              <span className={s.blogTileCta}>→ read</span>
             </div>
-            <span className={s.blogFeaturedStripCta}>→ read post</span>
-          </div>
-        </div>
-      </button>
-
-      {/* Tile grid — all remaining visible posts */}
-      {visibleRest.length > 0 && (
-        <div className={s.blogTileGrid}>
-          {visibleRest.map(post => (
-            <button
-              key={post.slug}
-              type="button"
-              className={s.blogTile}
-              onClick={() => onSelectPost(post.slug)}
-            >
-              {/*
-                Title and excerpt lead; everything else is one quiet
-                line at the bottom. The old tile carried six competing
-                data points, which is what made the grid hard to scan.
-              */}
-              <h3 className={s.blogTileTitle}>{post.title}</h3>
-              <p className={s.blogTileExcerpt}>{post.excerpt}</p>
-              <div className={s.blogTileMeta}>
-                <span>
-                  <time dateTime={post.date}>{post.date}</time>
-                  {' · '}
-                  {post.readTime}
-                </span>
-                <span className={s.blogTileCta}>→ read</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Infinite scroll sentinel */}
-      {hasMore && (
-        <div ref={sentinelRef} className={s.blogInfiniteLoader}>
-          <span className={s.blogLoadingDot} />
-          <span className={s.blogLoadingDot} />
-          <span className={s.blogLoadingDot} />
-        </div>
-      )}
+          </button>
+        ))}
+      </div>
 
       {/* Bottom spacer so chat button doesn't cover last card */}
       <div style={{ height: 80, flexShrink: 0 }} />

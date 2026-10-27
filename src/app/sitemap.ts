@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next';
 import { getAllPosts } from '@/lib/blog';
 import { TABS } from '@/types/panel';
+import { SITE_URL as BASE_URL } from '@/lib/site';
 
-const BASE_URL = 'https://www.viiforwin.in';
+// .md alternates stay out of the sitemap: they are noindex copies of these pages.
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const panelRoutes: MetadataRoute.Sitemap = TABS.map(tab => ({

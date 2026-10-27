@@ -163,3 +163,30 @@
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Skip to content link (a11y) ── */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+}
+
+.skip-to-content:focus {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  padding: 8px 16px;
+  background: var(--color-amber);
+  color: var(--color-bg);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-decoration: none;
+  z-index: 9999;
+}

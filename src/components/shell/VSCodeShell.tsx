@@ -286,7 +286,7 @@ function SidebarFile({
   lang: Tab['lang'];
   git?: 'M' | 'U';
   active?: boolean;
-  indent?: 1 | 2 | 3;
+  indent?: number;
   icon?: React.ReactNode;
   onClick: () => void;
 }) {

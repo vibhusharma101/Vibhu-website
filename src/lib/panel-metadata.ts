@@ -1,9 +1,11 @@
 import type { PanelId } from '@/types/panel';
 import { bio } from '@/data/bio';
 
-export const PANEL_META: Record<PanelId, { title?: string; description: string }> = {
+// aiSummary feeds <meta name="ai-summary">; it falls back to description.
+export const PANEL_META: Record<PanelId, { title?: string; description: string; aiSummary?: string }> = {
   home: {
     description: bio.tagline,
+    aiSummary: `Homepage of ${bio.name}, an AI engineer and 2x founder (${bio.currentRole}). Links to his work history, projects, writing and contact details.`,
   },
   work: {
     title: 'Work Experience',
@@ -27,6 +29,8 @@ export const PANEL_META: Record<PanelId, { title?: string; description: string }
     title: 'Blog',
     description:
       'Vibhanshu Sharma writes about production AI engineering — agents, code review systems, security, and systems design.',
+    aiSummary:
+      'Index of every published blog post by Vibhanshu Sharma, newest first, covering AI agents, AI code review, security, system design and algorithms.',
   },
 };
 
@@ -41,8 +45,9 @@ export function buildPanelMetadata(panel: PanelId, path: string) {
   return {
     ...(meta.title ? { title: meta.title } : {}),
     description: meta.description,
-    alternates: { canonical: path },
+    alternates: { canonical: path, types: { 'text/markdown': `${path}.md` } },
     openGraph: { title: resolvedTitle, description: meta.description, url: path },
     twitter: { title: resolvedTitle, description: meta.description },
+    other: { 'ai-summary': meta.aiSummary ?? meta.description },
   };
 }

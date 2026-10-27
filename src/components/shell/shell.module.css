@@ -159,9 +159,12 @@
 .sidebarFile.indent1 { padding-left: 22px; }
 .sidebarFile.indent2 { padding-left: 34px; }
 .sidebarFile.indent3 { padding-left: 46px; }
+.sidebarFile.indent4 { padding-left: 58px; }
 
 .sidebarFolder.indent1 { padding-left: 22px; }
 .sidebarFolder.indent2 { padding-left: 34px; }
+.sidebarFolder.indent3 { padding-left: 46px; }
+.sidebarFolder.indent4 { padding-left: 58px; }
 
 .folderCount {
   font-size: 9px;
