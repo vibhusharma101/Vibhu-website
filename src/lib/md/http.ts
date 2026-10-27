@@ -42,8 +42,10 @@ export function markdownResponse(request: Request, body: string, opts: MarkdownR
   return new Response(request.method === 'HEAD' ? null : body, { status, headers });
 }
 
-export function textResponse(request: Request, body: string, contentType = 'text/plain; charset=utf-8') {
-  return new Response(request.method === 'HEAD' ? null : body, {
+// For force-static routes: don't read the Request there — static prerendering
+// can't access it, and Next answers HEAD for static routes itself.
+export function textResponse(body: string, contentType = 'text/plain; charset=utf-8') {
+  return new Response(body, {
     headers: {
       ...CORS_HEADERS,
       'Content-Type': contentType,

@@ -6,7 +6,7 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 export const dynamic = 'force-static';
 export const revalidate = 86400;
 
-export function GET(request: Request) {
+export function GET() {
   const body = `# ai.txt — how AI systems may use this site (ai-txt spec v1.1.1)
 # Keep in sync with ${SITE_URL}/robots.txt and ${SITE_URL}/llms.txt
 spec-version: 1.1.1
@@ -48,5 +48,5 @@ github: ${bio.github}
 Last updated: ${new Date().toISOString().slice(0, 10)}
 `;
 
-  return textResponse(request, body);
+  return textResponse(body);
 }

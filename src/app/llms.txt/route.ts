@@ -10,7 +10,7 @@ export const revalidate = 86400;
 
 const MAX_POSTS = 50;
 
-export async function GET(request: Request) {
+export async function GET() {
   const routes = await listMarkdownRoutes();
   const toLinks = (section: 'core' | 'blog') =>
     routes
@@ -35,5 +35,5 @@ export async function GET(request: Request) {
     ])}`,
   ];
 
-  return textResponse(request, `${body.join('\n\n')}\n`);
+  return textResponse(`${body.join('\n\n')}\n`);
 }

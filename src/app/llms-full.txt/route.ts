@@ -8,7 +8,7 @@ export const revalidate = 86400;
 
 const SIZE_WARNING = 500_000;
 
-export async function GET(request: Request) {
+export async function GET() {
   const routes = await listMarkdownRoutes();
   const sections = routes.map(
     ({ info, page }) => `---\n<!-- source: ${absoluteUrl(info.path)} -->\n${renderDocument(page)}`
@@ -25,5 +25,5 @@ export async function GET(request: Request) {
     console.warn(`[llms-full.txt] ${body.length} chars — over the ${SIZE_WARNING} budget; cap the blog section.`);
   }
 
-  return textResponse(request, body);
+  return textResponse(body);
 }
