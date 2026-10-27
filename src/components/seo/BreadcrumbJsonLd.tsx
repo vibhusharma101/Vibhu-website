@@ -1,4 +1,4 @@
-const SITE_URL = 'https://www.viiforwin.in';
+import { SITE_URL } from '@/lib/site';
 
 interface Crumb {
   name: string;

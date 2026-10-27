@@ -4,6 +4,7 @@ import { ShellPage } from '@/components/shell/ShellPage';
 import type { PanelId } from '@/types/panel';
 import { buildPanelMetadata, PANEL_META } from '@/lib/panel-metadata';
 import { BreadcrumbJsonLd } from '@/components/seo/BreadcrumbJsonLd';
+import { WebSiteJsonLd } from '@/components/seo/WebSiteJsonLd';
 
 // 'blog' is included so the shell's client-side tab state stays consistent, but the
 // static route at src/app/blog/page.tsx always wins for the URL /blog — see that
@@ -33,6 +34,7 @@ export default async function PanelPage({ params }: { params: Promise<{ panel: s
   return (
     <>
       <BreadcrumbJsonLd items={crumbs} />
+      {panelId === 'home' && <WebSiteJsonLd />}
       <ShellPage initialPanel={panelId} />
     </>
   );
