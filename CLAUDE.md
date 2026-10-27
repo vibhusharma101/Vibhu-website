@@ -1,6 +1,6 @@
 # vibhu-website — Claude Code Project Guide
 
-Personal portfolio + landing page built with Next.js 15, React 19, TypeScript, and Mantine 8.
+Personal portfolio built with Next.js 15, React 19, TypeScript, CSS Modules and MDX.
 
 ## Dev Commands
 
@@ -8,6 +8,7 @@ Personal portfolio + landing page built with Next.js 15, React 19, TypeScript, a
 npm run dev      # Start dev server (Turbopack) at http://localhost:3000
 npm run build    # Production build
 npm run lint     # ESLint
+npm run check:md # Fails if a page has no markdown renderer
 ```
 
 ## Project Structure
@@ -15,66 +16,73 @@ npm run lint     # ESLint
 ```
 src/
   app/
-    page.tsx              # Homepage — all sections stacked
-    layout.tsx            # Root layout with MantineProvider
+    page.tsx              # Redirects / → /home
+    layout.tsx            # Root layout, metadata, Person JSON-LD
+    [panel]/page.tsx      # /home /work /projects /about /contact — one shell, one panel per tab
     blog/
-      page.tsx            # Blog listing
-      [slug]/page.tsx     # Individual blog post
-    project/[slug]/       # Project detail page
-    workex/[slug]/        # Work experience detail page
+      page.tsx            # Blog listing (shell, blog panel)
+      [slug]/page.tsx     # Individual blog post (MDX)
+    api/chat/             # Chat widget backend
+    api/md/[[...path]]/   # Markdown version of any page (see "AI-readable site")
+    llms.txt/ llms-full.txt/ ai.txt/ robots.txt/   # Generated text routes
   components/
-    hero/                 # HeroText, ChatInterface, ChatPopover, Dots
-    ui/                   # Header, Footer, BadgeCard
-    aboutme/              # AboutMe section
-    myprojects/           # MyProjects section
-    workex/               # WorkEx section
-    blog/                 # BlogCard
+    shell/                # VSCodeShell (tabs, sidebar, status bar), ShellPage
+    panels/               # HomePanel, WorkPanel, ProjectsPanel, AboutPanel, ContactPanel, Blog*
+    chat/                 # ChatWidget
+    blog/                 # MDX components, BlogShell, TldrBlock
+    seo/                  # BreadcrumbJsonLd, WebSiteJsonLd
+  content/blog/*.mdx      # Blog posts (frontmatter: title, excerpt, date, tags, published, tldr)
+  data/                   # bio, about, workex, projects — content shared by HTML + markdown
+  lib/
+    site.ts               # Site URL / name / description — single source of truth
+    md/                   # Markdown renderer registry for the AI-readable site
+  middleware.ts           # .md suffix + Accept: text/markdown → /api/md
 ```
 
 ## Tech Stack
 
 | Tool | Version | Purpose |
 |---|---|---|
-| Next.js | 15.5.4 | Framework (App Router) |
+| Next.js | 15.5 | Framework (App Router) |
 | React | 19.1.0 | UI |
 | TypeScript | 5 | Types |
-| Mantine | 8.3.3 | Component library + theming |
+| next-mdx-remote | 6 | Blog posts (+ remark-gfm, remark-math, rehype-katex, rehype-pretty-code) |
 | Tabler Icons | 3.35 | Icons (`@tabler/icons-react`) |
 | SASS | 1.93 | CSS modules |
-| PostCSS | — | Mantine postcss preset + simple vars |
+| Tailwind | 4 | Available via `@tailwindcss/postcss` |
 
 ## Styling Rules
 
-- **Mix freely**: Mantine components, Tailwind, CSS Modules, plain CSS — use whatever fits best for the task
-- Mantine's `MantineProvider` is already in `layout.tsx` — Mantine components work out of the box
-- **CSS Modules** (`.module.css` / `.module.scss`) are co-located with components and work alongside any other approach
-- Tailwind can be added via `npm install -D tailwindcss` if not already installed
-- PostCSS is configured for Mantine — adding Tailwind to `postcss.config` is straightforward
+- **CSS Modules** (`.module.css`) co-located with components are the main approach; design tokens are CSS variables in `globals.css`
+- Tailwind 4 is configured in `postcss.config` and can be mixed in where it fits
 
 ## Component Conventions
 
 - One component per file, named and exported as a named export
 - Co-locate CSS module with its component in the same folder
-- `'use client'` only when hooks or browser APIs are needed (e.g. `useDisclosure`)
+- `'use client'` only when hooks or browser APIs are needed
 - Server components by default (no `'use client'` unless required)
 - Keep components under 200 lines — split if larger
 
-## Landing Page Goals
+## Site Layout
 
-This is a personal portfolio landing page for **Vibhanshu Sharma**. The homepage sections are:
+Personal portfolio for **Vibhanshu Sharma**, built as a VS Code-style shell (`VSCodeShell`): a tab per page (`TABS` in `src/types/panel.ts`), a sidebar, a status bar, and a floating `ChatWidget`. There is no separate header or footer — the tabs are the nav.
 
-1. **Header** — Nav with links: Features, Pricing, Learn, Community + search
-2. **HeroText** — Main headline with CTA buttons ("Book a demo", "Purchase a license")
-3. **WorkEx** — Professional work experience timeline
-4. **MyProjects** — Portfolio project cards
-5. **AboutMe** — Personal bio / about section
-6. **Footer** — Bottom links
-7. **ChatPopover** — Floating chat widget (bottom-right, `Affix`)
+Tabs: home · work · projects · about · contact · blog
+
+## AI-readable site (SEO / GEO)
+
+Every public page has a markdown version (`/work.md`, or `Accept: text/markdown`), plus generated `/llms.txt`, `/llms-full.txt`, `/ai.txt` and `/robots.txt`.
+
+- **New page?** Add its route to `MARKDOWN_ROUTES` in `src/lib/md/routes.ts` and a renderer in `src/lib/md/registry.ts`. Run `npm run check:md` — it fails if a page has no renderer.
+- **Site URL / name / description** come from `src/lib/site.ts`. Don't hardcode them.
+- **Page text** for home/about lives in `src/data/about.ts` so the HTML and markdown stay identical.
+- **New page metadata**: use `buildPanelMetadata` (adds canonical, markdown alternate link, `ai-summary`).
 
 ### Design Direction
 
 - Avoid generic AI aesthetics: no purple gradients, no rounded-2xl everything, no stock layouts
-- Use Mantine's design system tokens consistently
+- Use the design tokens in `globals.css` consistently
 - Mobile-first responsive: works at 320px, 768px, 1024px, 1440px
 - Accessibility: keyboard navigation, ARIA labels, proper heading hierarchy
 - Every section must handle loading/empty/error states
@@ -101,10 +109,11 @@ Key skills for this project:
 
 ## Key Files
 
-- `src/app/layout.tsx` — Root layout, MantineProvider, global CSS import
-- `src/app/globals.css` — Global styles
-- `src/app/page.tsx` — Homepage composition (add/remove sections here)
-- `postcss.config.*` — PostCSS for Mantine
+- `src/app/layout.tsx` — Root layout, site metadata, global CSS import
+- `src/app/globals.css` — Global styles and design tokens
+- `src/components/shell/VSCodeShell.tsx` — Shell composition (tabs, panels, status bar)
+- `src/lib/panel-metadata.ts` — Per-page titles/descriptions
+- `src/lib/site.ts` — Site-level facts
 - `next.config.ts` — Next.js config (currently minimal)
 
 ## Release Process
@@ -116,5 +125,6 @@ All work goes: **feature branch → PR into `develop`** → merge → **PR from 
 ## What NOT to Do
 
 - Don't add `'use client'` to components that don't need it
-- Don't create new pages without adding them to the nav in `Header.tsx`
+- Don't create new pages without adding them to `TABS` (nav) and giving them a markdown renderer
+- Don't hardcode the site URL — import from `src/lib/site.ts`
 - Don't use `<img>` tags — use Next.js `<Image>` from `next/image` for optimization
