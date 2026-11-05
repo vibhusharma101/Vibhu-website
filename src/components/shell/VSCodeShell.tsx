@@ -16,6 +16,7 @@ import { BlogPostPane } from '@/components/panels/BlogPostPane';
 import { ChatWidget } from '@/components/chat/ChatWidget';
 import { BlogSidebarTree } from './BlogSidebarTree';
 import { buildBlogSidebarTree } from '@/lib/blog-groups';
+import { isPlainClick } from '@/lib/nav';
 import s from './shell.module.css';
 
 interface Props {
@@ -98,6 +99,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
           <SidebarFile
             filename="home"
             lang="tsx"
+            href="/home"
             active={activePanel === 'home'}
             indent={1}
             icon={<IconHome size={13} style={{ color: 'var(--color-amber)', flexShrink: 0 }} />}
@@ -120,6 +122,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
               filename={f.filename}
               lang={f.lang}
               git={f.git}
+              href={`/${f.id}`}
               active={activePanel === f.id}
               indent={2}
               onClick={() => navigate(f.id)}
@@ -145,6 +148,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
                   key={`blog-${post.slug}`}
                   filename={`${post.slug}.mdx`}
                   lang="md"
+                  href={`/blog/${post.slug}`}
                   active={activePanel === 'blog' && selectedBlogSlug === post.slug}
                   indent={indent}
                   onClick={() => { setActivePanel('blog'); setSelectedBlogSlug(post.slug); setSidebarOpen(false); }}
@@ -185,13 +189,21 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
                   aria-controls={`panel-${tab.id}`}
                   id={`tab-${tab.id}`}
                   className={`${s.tab} ${activePanel === tab.id ? s.active : ''}`}
-                  onClick={() => setActivePanel(tab.id)}
+                  onClick={e => { if (isPlainClick(e)) setActivePanel(tab.id); }}
                   tabIndex={activePanel === tab.id ? 0 : -1}
                 >
-                  <span className={s.tabLangDot} style={{ background: tab.langColor }} />
-                  <span>{tab.filename.replace(/\.[^.]+$/, '')}</span>
-                  <span className={s.tabExt}>.{tab.lang === 'tsx' ? 'tsx' : tab.lang === 'md' ? 'md' : tab.lang === 'sh' ? 'sh' : 'ts'}</span>
-                  <span className={s.tabClose} aria-hidden>×</span>
+                  {/* Real link so crawlers can follow it; the li handles plain clicks */}
+                  <a
+                    href={`/${tab.id}`}
+                    className={s.tabLink}
+                    tabIndex={-1}
+                    onClick={e => { if (isPlainClick(e)) e.preventDefault(); }}
+                  >
+                    <span className={s.tabLangDot} style={{ background: tab.langColor }} />
+                    <span>{tab.filename.replace(/\.[^.]+$/, '')}</span>
+                    <span className={s.tabExt}>.{tab.lang === 'tsx' ? 'tsx' : tab.lang === 'md' ? 'md' : tab.lang === 'sh' ? 'sh' : 'ts'}</span>
+                    <span className={s.tabClose} aria-hidden>×</span>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -277,6 +289,7 @@ function SidebarFile({
   filename,
   lang,
   git,
+  href,
   active,
   indent = 1,
   icon,
@@ -285,6 +298,7 @@ function SidebarFile({
   filename: string;
   lang: Tab['lang'];
   git?: 'M' | 'U';
+  href: string;
   active?: boolean;
   indent?: number;
   icon?: React.ReactNode;
@@ -293,11 +307,16 @@ function SidebarFile({
   const indentClass = indent === 1 ? s.indent1 : indent === 2 ? s.indent2 : s.indent3;
 
   return (
-    <button
-      type="button"
+    <a
+      href={href}
       className={`${s.sidebarFile} ${indentClass} ${active ? s.active : ''}`}
-      onClick={onClick}
+      onClick={e => {
+        if (!isPlainClick(e)) return;
+        e.preventDefault();
+        onClick();
+      }}
       aria-label={filename}
+      aria-current={active ? 'page' : undefined}
     >
       {icon ?? <LangBadge lang={lang} />}
       <span className={s.fileName}>{filename}</span>
@@ -305,7 +324,7 @@ function SidebarFile({
         <span className={`${s.gitBadge} ${git === 'M' ? s.gitM : s.gitU}`}>{git}</span>
       )}
       {!git && active && <span className={s.modDot} />}
-    </button>
+    </a>
   );
 }
 
