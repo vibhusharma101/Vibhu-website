@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import type { BlogPost } from '@/types/blog';
 import { ReadingRail } from '@/components/blog/ReadingRail';
 import { TldrBlock } from '@/components/blog/TldrBlock';
+import { isPlainClick } from '@/lib/nav';
 import styles from '@/app/blog/[slug]/blog-post.module.css';
 
 interface Props {
@@ -63,15 +64,19 @@ export function BlogPostPane({ post, content, otherPosts, onBack, onSelectPost }
             <p className={styles.moreReadingHead}>Keep reading</p>
             <div className={styles.moreReadingGrid}>
               {otherPosts.slice(0, 4).map(op => (
-                <button
+                <a
                   key={op.slug}
-                  type="button"
-                  onClick={() => onSelectPost(op.slug)}
+                  href={`/blog/${op.slug}`}
+                  onClick={e => {
+                    if (!isPlainClick(e)) return;
+                    e.preventDefault();
+                    onSelectPost(op.slug);
+                  }}
                   className={styles.moreReadingItem}
                 >
                   <p className={styles.moreReadingTitle}>{op.title}</p>
                   <span className={styles.moreReadingMeta}>{op.date} · {op.readTime}</span>
-                </button>
+                </a>
               ))}
             </div>
           </div>

@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import type { PanelId } from '@/types/panel';
 import { bio } from '@/data/bio';
 import { heroIntro } from '@/data/about';
+import { isPlainClick } from '@/lib/nav';
 import { MathVisualizer } from './MathVisualizer';
 import s from './panels.module.css';
 
@@ -48,12 +50,22 @@ export function HomePanel({ onNavigate }: Props) {
         </div>
 
         <div className={s.ctaRow}>
-          <button className={s.btn} onClick={() => onNavigate('contact')}>
+          <Link
+            href="/contact"
+            prefetch={false}
+            className={s.btn}
+            onClick={e => { if (isPlainClick(e)) { e.preventDefault(); onNavigate('contact'); } }}
+          >
             get in touch
-          </button>
-          <button className={`${s.btn} ${s.btnGhost}`} onClick={() => onNavigate('work')}>
+          </Link>
+          <Link
+            href="/work"
+            prefetch={false}
+            className={`${s.btn} ${s.btnGhost}`}
+            onClick={e => { if (isPlainClick(e)) { e.preventDefault(); onNavigate('work'); } }}
+          >
             see my work
-          </button>
+          </Link>
         </div>
       </div>
 
