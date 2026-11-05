@@ -297,6 +297,14 @@
   font-family: var(--font-mono);
 }
 
+/* The tab's link fills it and lays out its children exactly as the tab used to */
+.tabLink {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  align-self: stretch;
+}
+
 .tab:last-child {
   border-right: 1px solid var(--color-amber-deep);
 }
@@ -545,6 +553,7 @@
   .tabExt  { display: none; }
   .tabClose { display: none; }
   .tab { padding: 0 8px; font-size: 10px; gap: 3px; }
+  .tabLink { gap: 3px; }
   .tabList { margin: 0 4px; }
   .tabLangDot { width: 5px; height: 5px; }
 

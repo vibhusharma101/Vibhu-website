@@ -2,6 +2,7 @@
 
 import type { BlogPost } from '@/types/blog';
 import { buildBlogSidebarTree } from '@/lib/blog-groups';
+import { isPlainClick } from '@/lib/nav';
 import s from './panels.module.css';
 
 interface Props {
@@ -59,11 +60,15 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
 
       <div className={s.blogTileGrid}>
         {allPosts.map(post => (
-          <button
+          <a
             key={post.slug}
-            type="button"
+            href={`/blog/${post.slug}`}
             className={s.blogTile}
-            onClick={() => onSelectPost(post.slug)}
+            onClick={e => {
+              if (!isPlainClick(e)) return;
+              e.preventDefault();
+              onSelectPost(post.slug);
+            }}
           >
             <h3 className={s.blogTileTitle}>{post.title}</h3>
             <p className={s.blogTileExcerpt}>{post.excerpt}</p>
@@ -76,7 +81,7 @@ export function BlogListPanel({ posts, onSelectPost }: Props) {
               </span>
               <span className={s.blogTileCta}>→ read</span>
             </div>
-          </button>
+          </a>
         ))}
       </div>
 
