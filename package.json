@@ -7,7 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "check:md": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-md-routes.mjs"
+    "check:md": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-md-routes.mjs",
+    "check:a11y": "node scripts/check-a11y.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
