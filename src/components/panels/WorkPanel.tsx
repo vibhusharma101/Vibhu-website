@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { WorkExEntry } from '@/data/workex';
 import s from './panels.module.css';
 
@@ -17,6 +17,25 @@ interface Props {
 
 export function WorkPanel({ entries }: Props) {
   const [open, setOpen] = useState<WorkExEntry | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  /* Dialog: focus Close on open, Escape closes, focus returns to the entry that opened it */
+  useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      openerRef.current?.focus();
+    };
+  }, [open]);
+
+  const openEntry = (entry: WorkExEntry, el: HTMLElement) => {
+    openerRef.current = el;
+    setOpen(entry);
+  };
 
   return (
     <div className={s.panelBody}>
@@ -32,10 +51,12 @@ export function WorkPanel({ entries }: Props) {
             key={entry.id}
             className={s.workEntry}
             style={{ cursor: 'pointer' }}
-            onClick={() => setOpen(entry)}
+            onClick={e => openEntry(entry, e.currentTarget)}
             role="button"
             tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && setOpen(entry)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEntry(entry, e.currentTarget); }
+            }}
           >
             <span className={s.entryNum}>0{i + 1}</span>
 
@@ -63,8 +84,16 @@ export function WorkPanel({ entries }: Props) {
 
       {/* ── Detail dialog ── */}
       {open && (
-        <div className={s.dialogOverlay} onClick={() => setOpen(null)}>
-          <div className={s.dialog} onClick={e => e.stopPropagation()}>
+        <div className={s.dialogOverlay}>
+          {/* Mouse/touch shortcut only; keyboard users close with Escape or the Close button */}
+          <button
+            type="button"
+            className={s.dialogBackdrop}
+            aria-label="Close"
+            tabIndex={-1}
+            onClick={() => setOpen(null)}
+          />
+          <div className={s.dialog} role="dialog" aria-modal="true" aria-labelledby="work-dialog-title">
 
             {/* Title bar */}
             <div className={s.dialogTitlebar}>
@@ -74,6 +103,8 @@ export function WorkPanel({ entries }: Props) {
                 <span className={s.dialogEntry}>{open.company}</span>
               </div>
               <button
+                ref={closeRef}
+                type="button"
                 className={s.dialogClose}
                 onClick={() => setOpen(null)}
                 aria-label="Close"
@@ -89,7 +120,7 @@ export function WorkPanel({ entries }: Props) {
                 <span className={s.dialogSep}>·</span>
                 <span>{open.location}</span>
               </div>
-              <div className={s.dialogCompany}>{open.company}</div>
+              <h2 id="work-dialog-title" className={s.dialogCompany}>{open.company}</h2>
               <div className={s.dialogRole}>{open.role}</div>
 
               <ul className={s.dialogBullets}>
