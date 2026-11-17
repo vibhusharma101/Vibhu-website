@@ -15,7 +15,7 @@ export const PANEL_META: Record<PanelId, { title?: string; description: string; 
   projects: {
     title: 'Projects',
     description:
-      'AI agents, developer tools, and full-stack products built by Vibhanshu Sharma, including vii-stack, kodemux, Think-In-HTML, and Recyclink.',
+      'AI agents, developer tools, and full-stack products built by Vibhanshu Sharma, including Session City, jaagte-raho, vii-stack, kodemux, Think-In-HTML, and Recyclink.',
   },
   about: {
     title: 'About',

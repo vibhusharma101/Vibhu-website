@@ -12,6 +12,28 @@ export interface Project {
 
 export const projects: Project[] = [
   {
+    id: 'session-city',
+    name: 'Session City',
+    tagline: 'Your Claude Code sessions, rebuilt as a little 3D city you can drive around',
+    description:
+      'A Claude Code plugin that turns every session into a building and every project into a block. Live sessions glow in Uptown, the ones waiting for you wave a "!", and abandoned ones crumble in Old Town. Drive between them, step inside to watch your agent work, and read each session\'s story with credentials masked. Runs locally with zero npm dependencies; nothing leaves your machine.',
+    stack: ['Claude Code', 'Three.js', 'Node.js', 'JavaScript'],
+    githubUrl: 'https://github.com/vibhusharma101/session-city',
+    featured: true,
+    highlight: 'Zero dependencies, local only',
+  },
+  {
+    id: 'jaagte-raho',
+    name: 'jaagte-raho',
+    tagline: 'Keeps your computer awake while Claude Code is working, and only then',
+    description:
+      'A Claude Code plugin that holds off sleep while Claude, or its background agents and tasks, are still working, then lets the machine sleep normally the moment it goes idle. No config, no admin rights, nothing to switch off. Works on macOS, Windows and Linux, with an optional lid-closed mode on Windows and Linux while plugged in.',
+    stack: ['Claude Code', 'Hooks', 'Bash', 'PowerShell'],
+    githubUrl: 'https://github.com/vibhusharma101/jaagte-raho',
+    featured: true,
+    highlight: 'macOS · Windows · Linux',
+  },
+  {
     id: 'recyclink',
     name: 'Recyclink',
     tagline: "India's only zero-markup EPR credit exchange",
