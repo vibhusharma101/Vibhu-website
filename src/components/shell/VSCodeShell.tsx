@@ -61,6 +61,22 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
     return () => window.removeEventListener('popstate', handlePop);
   }, []);
 
+  /* WAI-ARIA tabs pattern, automatic activation: arrows/Home/End move focus and selection together */
+  const onTabKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    const i = TABS.findIndex(t => t.id === activePanel);
+    const target =
+      e.key === 'ArrowRight' ? TABS[(i + 1) % TABS.length] :
+      e.key === 'ArrowLeft'  ? TABS[(i - 1 + TABS.length) % TABS.length] :
+      e.key === 'Home'       ? TABS[0] :
+      e.key === 'End'        ? TABS[TABS.length - 1] :
+      undefined;
+    if (target) {
+      e.preventDefault();
+      setActivePanel(target.id);
+      document.getElementById(`tab-${target.id}`)?.focus();
+    }
+  };
+
   const currentTab = TABS.find(t => t.id === activePanel)!;
 
   const activeBlogGroupId = selectedBlogSlug
@@ -180,7 +196,7 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             </button>
             <div className={s.brand}>Vibhanshu Sharma</div>
 
-            <ul className={s.tabList} role="tablist">
+            <ul className={s.tabList} role="tablist" aria-label="Pages" onKeyDown={onTabKeyDown}>
               {TABS.map(tab => (
                 <li
                   key={tab.id}
