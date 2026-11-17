@@ -1,10 +1,30 @@
 import './globals.css';
 import 'katex/dist/katex.min.css';
 import type { Metadata } from 'next';
+import { IBM_Plex_Mono, IBM_Plex_Serif } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { bio } from '@/data/bio';
 import { PERSON_ID, SITE_DESCRIPTION, SITE_URL } from '@/lib/site';
+
+/* Self-hosted at build time; exposed as CSS variables that the --font-* tokens in globals.css use */
+const plexMono = IBM_Plex_Mono({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-plex-mono',
+  // Glyphs outside the latin subset (→, ✓) must fall back to a monospace face, not next/font's Arial
+  adjustFontFallback: false,
+  fallback: ['ui-monospace', 'Menlo', 'Consolas', 'monospace'],
+});
+
+const plexSerif = IBM_Plex_Serif({
+  weight: ['400', '700'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-plex-serif',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -56,7 +76,7 @@ const personJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${plexMono.variable} ${plexSerif.variable}`}>
       <body>
         <a href="#panel-area" className="skip-to-content">Skip to content</a>
         <script

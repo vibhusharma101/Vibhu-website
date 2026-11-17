@@ -1,4 +1,4 @@
-import { AMBER, MAGENTA, BG, DIM, MONO, drawGrid, type VizRunner } from './shared';
+import { AMBER, MAGENTA, BG, DIM, mono, nextFrame, drawGrid, type VizRunner } from './shared';
 
 /**
  * Fourier series as rotating epicycles. A chain of phasors — one per odd
@@ -78,20 +78,20 @@ export const runFourier: VizRunner = (canvas, ctx) => {
     ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill();
 
     // Labels.
-    ctx.font = `10px ${MONO}`; ctx.fillStyle = DIM;
+    ctx.font = `10px ${mono()}`; ctx.fillStyle = DIM;
     ctx.fillText('fourier series', 12, 16);
     ctx.fillStyle = AMBER; ctx.globalAlpha = 0.8;
     ctx.fillText('Σ (4/π) · sin((2k−1)θ)/(2k−1)', 12, 30);
     ctx.globalAlpha = 1;
 
-    ctx.font = `9.5px ${MONO}`; ctx.fillStyle = DIM;
+    ctx.font = `9.5px ${mono()}`; ctx.fillStyle = DIM;
     const cap = 'rotating vectors = ';
     ctx.fillText(cap, 12, h - 12);
-    ctx.fillStyle = MAGENTA; ctx.font = `12px ${MONO}`;
+    ctx.fillStyle = MAGENTA; ctx.font = `12px ${mono()}`;
     ctx.fillText(String(terms), 12 + ctx.measureText(cap).width + 2, h - 11);
 
     time += 0.02; frame++;
-    raf = requestAnimationFrame(draw);
+    raf = nextFrame(draw);
   };
   draw();
 

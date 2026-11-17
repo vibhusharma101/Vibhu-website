@@ -1,4 +1,4 @@
-import { AMBER, MAGENTA, BG, DIM, MONO, drawGrid, type VizRunner } from './shared';
+import { AMBER, MAGENTA, BG, DIM, mono, nextFrame, drawGrid, type VizRunner } from './shared';
 
 const EQUATIONS = [
   { label: 'growth(t)',  expr: '500k · eˢⁱⁿ⁽ᵗ⁾', color: AMBER   },
@@ -53,7 +53,7 @@ export const runWaves: VizRunner = (canvas, ctx) => {
 
     ctx.save(); ctx.strokeStyle = 'rgba(245,166,35,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke(); ctx.restore();
 
-    ctx.font = `10px ${MONO}`;
+    ctx.font = `10px ${mono()}`;
     EQUATIONS.forEach((eq, i) => {
       const y = 18 + i * 18;
       ctx.fillStyle = DIM; ctx.globalAlpha = 1; ctx.fillText(`${eq.label} =`, 12, y);
@@ -64,12 +64,12 @@ export const runWaves: VizRunner = (canvas, ctx) => {
 
     if (mouse.active) {
       const lbl = `(${Math.round(mouse.x)}, ${Math.round(mouse.y)})`;
-      ctx.font = `9px ${MONO}`;
+      ctx.font = `9px ${mono()}`;
       ctx.fillStyle = 'rgba(245,166,35,0.28)';
       ctx.fillText(lbl, w - ctx.measureText(lbl).width - 12, 16);
     }
 
-    ctx.font = `9.5px ${MONO}`;
+    ctx.font = `9.5px ${mono()}`;
     STATS.forEach((st, i) => {
       const y = h - 14 - (STATS.length - 1 - i) * 16;
       ctx.fillStyle = DIM; ctx.fillText(`${st.k} `, 12, y);
@@ -78,7 +78,7 @@ export const runWaves: VizRunner = (canvas, ctx) => {
 
     if (Math.floor(t * 2) % 2 === 0) { ctx.fillStyle = MAGENTA; ctx.fillRect(12, h - 8, 6, 1.5); }
     t += 0.018;
-    raf = requestAnimationFrame(draw);
+    raf = nextFrame(draw);
   };
   draw();
 

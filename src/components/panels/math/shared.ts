@@ -5,7 +5,18 @@ export const MAGENTA = '#ff1463';
 export const GRID    = 'rgba(58, 37, 8, 0.45)';
 export const BG      = '#030201';
 export const DIM     = 'rgba(200,180,150,0.6)';
-export const MONO    = '"IBM Plex Mono", monospace';
+
+/** Canvas can't resolve CSS variables, so read the next/font family behind --font-mono at draw time. */
+let monoFamily = '';
+export function mono() {
+  monoFamily ||= getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || 'monospace';
+  return monoFamily;
+}
+
+/** requestAnimationFrame, except under prefers-reduced-motion: the first frame stays as a still image. */
+export function nextFrame(draw: FrameRequestCallback) {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : requestAnimationFrame(draw);
+}
 
 /** A self-contained animation. Receives a sized canvas + 2d context, returns a cleanup fn. */
 export type VizRunner = (

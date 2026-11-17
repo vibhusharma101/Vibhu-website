@@ -479,7 +479,7 @@
 
 .statusbarMode {
   background: var(--color-magenta);
-  color: #fff;
+  color: var(--color-bg); /* 5.5:1 on magenta; white was 3.8:1 */
   padding: 2px 9px;
   margin: -5px 0;
   font-weight: 700;
@@ -490,7 +490,7 @@
 .statusbarSpacer { flex: 1; }
 
 .statusbarSep {
-  color: rgba(58, 37, 8, 0.5);
+  color: var(--color-amber-deep);
   user-select: none;
 }
 

@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 @import "tailwindcss";
 
 /* ==========================================================
@@ -33,9 +32,9 @@
   --color-json: #dcdcaa;
   --color-sh:   #ff1463;
 
-  /* ---- Typography ---- */
-  --font-mono:  "IBM Plex Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-  --font-serif: "IBM Plex Serif", "Source Serif Pro", Georgia, serif;
+  /* ---- Typography (families come from next/font in layout.tsx) ---- */
+  --font-mono:  var(--font-plex-mono), ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-serif: var(--font-plex-serif), "Source Serif Pro", Georgia, serif;
 
   /* ---- Sidebar ---- */
   --sidebar-width: 188px;
@@ -162,6 +161,16 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Reduced motion: stop loops and transitions site-wide ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── Skip to content link (a11y) ── */

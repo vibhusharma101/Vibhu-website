@@ -32,11 +32,16 @@ export function MathCanvas({ mode }: Props) {
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    // Resizing clears the canvas. Animated runners repaint next frame; under reduced
+    // motion the runner draws a single still, so restart it after every resize.
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let stop = () => {};
+    const start = () => { stop(); stop = RUNNERS[mode](canvas, ctx); };
 
-    const stop = RUNNERS[mode](canvas, ctx);
+    resize();
+    const ro = new ResizeObserver(() => { resize(); if (reduced) start(); });
+    ro.observe(canvas);
+    start();
 
     return () => {
       stop();
