@@ -81,6 +81,8 @@ try {
   check(await page.isVisible('[role="dialog"]'), 'Enter on a work entry opens the dialog');
   check(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Close'
     && !!document.activeElement.closest('[role="dialog"]')), 'focus moves to the dialog Close button');
+  await page.keyboard.press('Tab');
+  check(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')), 'Tab keeps focus inside the dialog');
   await page.keyboard.press('Escape');
   check(!(await page.isVisible('[role="dialog"]')), 'Escape closes the dialog');
   check(await entry.evaluate(el => el === document.activeElement), 'focus returns to the entry that opened it');

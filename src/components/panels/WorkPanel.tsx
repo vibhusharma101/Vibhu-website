@@ -20,11 +20,15 @@ export function WorkPanel({ entries }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
-  /* Dialog: focus Close on open, Escape closes, focus returns to the entry that opened it */
+  /* Dialog: focus Close on open, keep focus inside, Escape closes, focus returns to the opener */
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(null);
+      // aria-modal: Close is the dialog's only focusable element, so Tab stays on it
+      if (e.key === 'Tab') { e.preventDefault(); closeRef.current?.focus(); }
+    };
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
