@@ -281,15 +281,15 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
         {/* Status bar */}
         <footer className={s.statusbar} aria-label="status bar">
           <span>● READY</span>
-          <span className={s.statusbarSep}>▪</span>
+          <span className={s.statusbarSep} aria-hidden>▪</span>
           <span>Git: develop</span>
-          <span className={s.statusbarSep}>▪</span>
+          <span className={s.statusbarSep} aria-hidden>▪</span>
           <span>Ln 1, Col 1</span>
           <span className={s.statusbarSpacer} />
           <span>{LANG_LABEL[currentTab.lang]}</span>
-          <span className={s.statusbarSep}>▪</span>
+          <span className={s.statusbarSep} aria-hidden>▪</span>
           <span>UTF-8</span>
-          <span className={s.statusbarSep}>▪</span>
+          <span className={s.statusbarSep} aria-hidden>▪</span>
           <span className={s.statusbarMode}>OPERATOR</span>
         </footer>
       </div>
