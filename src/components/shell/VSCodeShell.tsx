@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { IconHome } from '@tabler/icons-react';
+import { IconFold, IconFolder, IconHome, IconMenu2, IconX } from '@tabler/icons-react';
 import type { WorkExEntry } from '@/data/workex';
 import type { Project } from '@/data/projects';
 import type { BlogPost } from '@/types/blog';
@@ -61,6 +61,14 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
     return () => window.removeEventListener('popstate', handlePop);
   }, []);
 
+  /* Escape closes the mobile sidebar drawer */
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen]);
+
   /* WAI-ARIA tabs pattern, automatic activation: arrows/Home/End move focus and selection together */
   const onTabKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
     const i = TABS.findIndex(t => t.id === activePanel);
@@ -97,14 +105,27 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
 
       {/* ══════ SIDEBAR ══════ */}
       {sidebarOpen && (
-        <div className={s.sidebarOverlay} onClick={() => setSidebarOpen(false)} />
+        /* Mouse/touch shortcut only; keyboard users close with Escape or the menu button */
+        <button
+          type="button"
+          className={s.sidebarOverlay}
+          aria-label="Close sidebar"
+          tabIndex={-1}
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
-      <nav className={`${s.sidebar} ${sidebarOpen ? s.sidebarOpen : ''}`}>
+      <nav className={`${s.sidebar} ${sidebarOpen ? s.sidebarOpen : ''}`} aria-label="Explorer">
         <div className={s.sidebarHead}>
           <span className={s.sidebarTitle}>Explorer</span>
           <div className={s.sidebarActions}>
-            <button aria-label="New file">+</button>
-            <button aria-label="Collapse">⊟</button>
+            <button
+              type="button"
+              aria-label="Collapse folders"
+              title="Collapse folders"
+              onClick={() => { setPagesOpen(false); setBlogOpen(false); }}
+            >
+              <IconFold size={14} stroke={1.75} aria-hidden />
+            </button>
           </div>
         </div>
 
@@ -127,9 +148,10 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             type="button"
             className={`${s.sidebarFolder} ${s.indent1}`}
             onClick={() => setPagesOpen(o => !o)}
+            aria-expanded={pagesOpen}
           >
-            <span className={s.folderArrow}>{pagesOpen ? '∨' : '›'}</span>
-            <span>📁</span><span>pages</span>
+            <span className={s.folderArrow} aria-hidden>{pagesOpen ? '∨' : '›'}</span>
+            <IconFolder size={14} stroke={1.75} className={s.folderIcon} aria-hidden /><span>pages</span>
           </button>
 
           {pagesOpen && pageFiles.map(f => (
@@ -150,9 +172,10 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             type="button"
             className={`${s.sidebarFolder} ${s.indent1}`}
             onClick={() => setBlogOpen(o => !o)}
+            aria-expanded={blogOpen}
           >
-            <span className={s.folderArrow}>{blogOpen ? '∨' : '›'}</span>
-            <span>📁</span><span>blog</span>
+            <span className={s.folderArrow} aria-hidden>{blogOpen ? '∨' : '›'}</span>
+            <IconFolder size={14} stroke={1.75} className={s.folderIcon} aria-hidden /><span>blog</span>
           </button>
 
           {blogOpen && (
@@ -190,9 +213,10 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
             <button
               className={s.hamburger}
               onClick={() => setSidebarOpen(o => !o)}
-              aria-label="Toggle sidebar"
+              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+              aria-expanded={sidebarOpen}
             >
-              {sidebarOpen ? '✕' : '☰'}
+              {sidebarOpen ? <IconX size={20} aria-hidden /> : <IconMenu2 size={20} aria-hidden />}
             </button>
             <div className={s.brand}>Vibhanshu Sharma</div>
 
@@ -281,15 +305,15 @@ export function VSCodeShell({ initialPanel = 'home', workex, projects, posts, bl
         {/* Status bar */}
         <footer className={s.statusbar} aria-label="status bar">
           <span>● READY</span>
-          <span className={s.statusbarSep} aria-hidden>▪</span>
+          <span className={s.statusbarSep} aria-hidden>{'▪︎'}</span>
           <span>Git: develop</span>
-          <span className={s.statusbarSep} aria-hidden>▪</span>
+          <span className={s.statusbarSep} aria-hidden>{'▪︎'}</span>
           <span>Ln 1, Col 1</span>
           <span className={s.statusbarSpacer} />
           <span>{LANG_LABEL[currentTab.lang]}</span>
-          <span className={s.statusbarSep} aria-hidden>▪</span>
+          <span className={s.statusbarSep} aria-hidden>{'▪︎'}</span>
           <span>UTF-8</span>
-          <span className={s.statusbarSep} aria-hidden>▪</span>
+          <span className={s.statusbarSep} aria-hidden>{'▪︎'}</span>
           <span className={s.statusbarMode}>OPERATOR</span>
         </footer>
       </div>

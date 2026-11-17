@@ -72,6 +72,39 @@ try {
     return lit;
   });
   check(painted > 500, `hero visualizer still draws a still frame under reduced motion (${painted} lit px)`);
+
+  // ── P2: work dialog ──
+  await page.goto(`${BASE}/work`, { waitUntil: 'networkidle' });
+  const entry = page.locator('#panel-work [role="button"]').first();
+  await entry.focus();
+  await page.keyboard.press('Enter');
+  check(await page.isVisible('[role="dialog"]'), 'Enter on a work entry opens the dialog');
+  check(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') === 'Close'
+    && !!document.activeElement.closest('[role="dialog"]')), 'focus moves to the dialog Close button');
+  await page.keyboard.press('Tab');
+  check(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')), 'Tab keeps focus inside the dialog');
+  await page.keyboard.press('Escape');
+  check(!(await page.isVisible('[role="dialog"]')), 'Escape closes the dialog');
+  check(await entry.evaluate(el => el === document.activeElement), 'focus returns to the entry that opened it');
+
+  // ── P2: sidebar Collapse really collapses ──
+  await page.goto(`${BASE}/home`, { waitUntil: 'networkidle' });
+  await page.click('button[aria-label="Collapse folders"]');
+  check(await page.locator('nav[aria-label="Explorer"] [aria-expanded="true"]').count() === 0, 'Collapse folders closes every folder');
+
+  // ── P2: mobile targets and drawer ──
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await phone.goto(`${BASE}/home`, { waitUntil: 'networkidle' });
+  const menu = await phone.locator('button[aria-label="Open sidebar"]').boundingBox();
+  check(menu.width >= 44 && menu.height >= 44, `menu button is at least 44px (${menu.width}x${menu.height})`);
+  const tab = await phone.locator('#tab-home').boundingBox();
+  check(tab.height >= 44, `tabs are at least 44px tall on mobile (${tab.height})`);
+  const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  check(overflow <= 0, `no sideways scroll at 390px (${overflow}px)`);
+  await phone.click('button[aria-label="Open sidebar"]');
+  check(await phone.locator('button[aria-label="Close sidebar"][aria-expanded="true"]').count() === 1, 'menu button opens the drawer');
+  await phone.keyboard.press('Escape');
+  check(await phone.locator('button[aria-label="Open sidebar"][aria-expanded="false"]').count() === 1, 'Escape closes the drawer');
 } finally {
   await browser.close();
 }

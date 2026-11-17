@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { IconFolder } from '@tabler/icons-react';
 import type { BlogPost } from '@/types/blog';
 import { buildBlogSidebarTree, type BlogGroup } from '@/lib/blog-groups';
 import s from './shell.module.css';
@@ -31,9 +32,10 @@ export function BlogSidebarTree({ posts, defaultOpen = [], renderFile }: Props) 
           type="button"
           className={`${s.sidebarFolder} ${indentClass}`}
           onClick={() => toggleOpen(group.id)}
+          aria-expanded={!!open[group.id]}
         >
-          <span className={s.folderArrow}>{open[group.id] ? '∨' : '›'}</span>
-          <span>📁</span><span>{group.label}</span>
+          <span className={s.folderArrow} aria-hidden>{open[group.id] ? '∨' : '›'}</span>
+          <IconFolder size={14} stroke={1.75} className={s.folderIcon} aria-hidden /><span>{group.label}</span>
           <span className={s.folderCount}>{postCount}</span>
         </button>
         {open[group.id] && (

@@ -148,7 +148,7 @@ export function ChatWidget() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="type your question..."
+          placeholder="type your question…"
           disabled={loading}
           autoFocus
           aria-label="Chat input"
