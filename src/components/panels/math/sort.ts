@@ -1,4 +1,4 @@
-import { AMBER, MAGENTA, BG, DIM, MONO, valColor, type VizRunner } from './shared';
+import { AMBER, MAGENTA, BG, DIM, mono, nextFrame, valColor, type VizRunner } from './shared';
 
 type Op = { type: 'cmp' | 'swap'; i: number; j: number };
 
@@ -201,18 +201,18 @@ export const runSort: VizRunner = (canvas, ctx) => {
     const al = ALGOS[algoIdx];
 
     // line 1: algorithm name + live progress
-    ctx.font = `11px ${MONO}`;
+    ctx.font = `11px ${mono()}`;
     ctx.fillStyle = done ? MAGENTA : AMBER;
     ctx.fillText(done ? `${al.label}  ✓ sorted` : al.label, padX, 16);
 
     if (phase === 'sorting') {
       const p = `${Math.round((opPtr / ops.length) * 100)}%`;
-      ctx.font = `9px ${MONO}`; ctx.fillStyle = DIM;
+      ctx.font = `9px ${mono()}`; ctx.fillStyle = DIM;
       ctx.fillText(p, w - padX - ctx.measureText(p).width, 16);
     }
 
     // line 2: live counters (numbers in amber so they pop as they climb)
-    ctx.font = `9px ${MONO}`;
+    ctx.font = `9px ${mono()}`;
     const seg = (label: string, value: string, x: number) => {
       ctx.fillStyle = DIM; ctx.fillText(label, x, 31);
       const lw = ctx.measureText(label).width;
@@ -231,7 +231,7 @@ export const runSort: VizRunner = (canvas, ctx) => {
     ctx.fillStyle = DIM;
     ctx.fillText(al.desc, padX, h - 9);
 
-    raf = requestAnimationFrame(draw);
+    raf = nextFrame(draw);
   };
   draw();
 

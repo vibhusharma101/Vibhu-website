@@ -31,7 +31,7 @@
 }
 
 .sidebarTitle {
-  font-size: 9.5px;
+  font-size: 11px;
   color: var(--color-amber-dim);
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -43,7 +43,11 @@
 }
 
 .sidebarActions button {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   color: var(--color-amber-dim);
   background: none;
   border: none;
@@ -72,7 +76,7 @@
 }
 
 .sidebarSection {
-  font-size: 9.5px;
+  font-size: 11px;
   color: var(--color-amber-dim);
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -90,6 +94,7 @@
 }
 
 .sidebarFolder {
+  min-height: 24px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -110,6 +115,11 @@
   color: var(--color-amber-text);
 }
 
+.folderIcon {
+  color: var(--color-amber);
+  flex-shrink: 0;
+}
+
 .folderArrow {
   font-size: 9px;
   color: var(--color-amber-dim);
@@ -119,6 +129,7 @@
 }
 
 .sidebarFile {
+  min-height: 24px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -207,7 +218,7 @@
   align-items: center;
   gap: 7px;
   color: var(--color-amber-dim);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .sidebarBottom .liveDot {
@@ -282,7 +293,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 12px;
+  padding: 0;
   border-left: 1px solid var(--color-amber-deep);
   color: var(--color-amber-dim);
   font-size: 11px;
@@ -303,6 +314,7 @@
   align-items: center;
   gap: 5px;
   align-self: stretch;
+  padding: 0 12px;
 }
 
 .tab:last-child {
@@ -317,7 +329,7 @@
 }
 
 .tabExt {
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .tabClose {
@@ -336,10 +348,15 @@
   color: var(--color-amber-dim);
 }
 
+.tab:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: -2px;
+}
+
 .tab.active {
   background: var(--color-bg);
   color: var(--color-amber-text);
-  border-bottom: 2px solid var(--color-magenta);
+  box-shadow: inset 0 -2px 0 var(--color-magenta); /* not a border: keeps the link full height */
 }
 
 .tab.active .tabExt {
@@ -474,7 +491,7 @@
 
 .statusbarMode {
   background: var(--color-magenta);
-  color: #fff;
+  color: var(--color-bg); /* 5.5:1 on magenta; white was 3.8:1 */
   padding: 2px 9px;
   margin: -5px 0;
   font-weight: 700;
@@ -485,7 +502,7 @@
 .statusbarSpacer { flex: 1; }
 
 .statusbarSep {
-  color: rgba(58, 37, 8, 0.5);
+  color: var(--color-amber-deep);
   user-select: none;
 }
 
@@ -500,8 +517,11 @@
   background: none;
   border: none;
   color: var(--color-amber);
-  font-size: 18px;
-  padding: 0 2px;
+  width: 44px;
+  height: 44px;
+  margin-left: -12px;
+  padding: 0;
+  justify-content: center;
   cursor: pointer;
   line-height: 1;
   flex-shrink: 0;
@@ -513,6 +533,8 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
+  border: none;
+  padding: 0;
   z-index: 25;
   cursor: pointer;
 }
@@ -552,9 +574,9 @@
   /* Tab bar — compact */
   .tabExt  { display: none; }
   .tabClose { display: none; }
-  .tab { padding: 0 8px; font-size: 10px; gap: 3px; }
-  .tabLink { gap: 3px; }
-  .tabList { margin: 0 4px; }
+  .tab { font-size: 11px; gap: 4px; }
+  .tabLink { gap: 4px; padding: 0 12px; }
+  .tabList { margin: 0 4px; height: 44px; }
   .tabLangDot { width: 5px; height: 5px; }
 
   /* Brand hidden — tabs + hamburger are enough on mobile */
@@ -565,7 +587,7 @@
   .panel { overflow-y: auto; }
 
   /* Status bar — minimal */
-  .statusbar { padding: 4px 12px; gap: 6px; font-size: 10px; }
+  .statusbar { padding: 4px 12px; gap: 6px; font-size: 11px; }
   .statusbarSep { display: none; }
   .statusbar > span:not(.statusbarMode):not(:first-child):not(.statusbarSpacer) {
     display: none;
